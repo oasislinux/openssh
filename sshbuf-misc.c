@@ -65,7 +65,7 @@ sshbuf_dump_data(const void *s, size_t len, FILE *f)
 void
 sshbuf_dump(struct sshbuf *buf, FILE *f)
 {
-	fprintf(f, "buffer %p len = %zu\n", buf, sshbuf_len(buf));
+	fprintf(f, "buffer %p len = %zu\n", (void *)buf, sshbuf_len(buf));
 	sshbuf_dump_data(sshbuf_ptr(buf), sshbuf_len(buf), f);
 }
 

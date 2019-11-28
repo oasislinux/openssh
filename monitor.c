@@ -1165,7 +1165,7 @@ mm_answer_keyallowed(struct ssh *ssh, int sock, struct sshbuf *m)
 	    (r = sshbuf_get_u32(m, &pubkey_auth_attempt)) != 0)
 		fatal("%s: buffer error: %s", __func__, ssh_err(r));
 
-	debug3("%s: key_from_blob: %p", __func__, key);
+	debug3("%s: key_from_blob: %p", __func__, (void *)key);
 
 	if (key != NULL && authctxt->valid) {
 		/* These should not make it past the privsep child */
@@ -1433,7 +1433,7 @@ mm_answer_keyverify(struct ssh *ssh, int sock, struct sshbuf *m)
 
 	ret = sshkey_verify(key, signature, signaturelen, data, datalen,
 	    sigalg, ssh->compat, &sig_details);
-	debug3("%s: %s %p signature %s%s%s", __func__, auth_method, key,
+	debug3("%s: %s %p signature %s%s%s", __func__, auth_method, (void *)key,
 	    (ret == 0) ? "verified" : "unverified",
 	    (ret != 0) ? ": " : "", (ret != 0) ? ssh_err(ret) : "");
 

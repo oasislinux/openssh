@@ -112,7 +112,7 @@ pkcs11_provider_finalize(struct pkcs11_provider *p)
 	CK_ULONG i;
 
 	debug("pkcs11_provider_finalize: %p refcount %d valid %d",
-	    p, p->refcount, p->valid);
+	    (void *)p, p->refcount, p->valid);
 	if (!p->valid)
 		return;
 	for (i = 0; i < p->nslots; i++) {
@@ -135,10 +135,12 @@ pkcs11_provider_finalize(struct pkcs11_provider *p)
 static void
 pkcs11_provider_unref(struct pkcs11_provider *p)
 {
-	debug("pkcs11_provider_unref: %p refcount %d", p, p->refcount);
+	debug("pkcs11_provider_unref: %p refcount %d", (void *)p, p->refcount);
 	if (--p->refcount <= 0) {
-		if (p->valid)
-			error("pkcs11_provider_unref: %p still valid", p);
+		if (p->valid) {
+			error("pkcs11_provider_unref: %p still valid",
+			    (void *)p);
+		}
 		free(p->name);
 		free(p->slotlist);
 		free(p->slotinfo);
@@ -166,7 +168,7 @@ pkcs11_provider_lookup(char *provider_id)
 	struct pkcs11_provider *p;
 
 	TAILQ_FOREACH(p, &pkcs11_providers, next) {
-		debug("check %p %s", p, p->name);
+		debug("check %p %s", (void *)p, p->name);
 		if (!strcmp(provider_id, p->name))
 			return (p);
 	}
@@ -338,7 +340,7 @@ pkcs11_check_obj_bool_attrib(struct pkcs11_key *k11, CK_OBJECT_HANDLE obj,
 	}
 	*val = flag != 0;
 	debug("%s: provider %p slot %lu object %lu: attrib %lu = %d",
-	    __func__, k11->provider, k11->slotidx, obj, type, *val);
+	    __func__, (void *)k11->provider, k11->slotidx, obj, type, *val);
 	return (0);
 }
 
@@ -430,7 +432,7 @@ pkcs11_rsa_private_encrypt(int flen, const u_char *from, u_char *to, RSA *rsa,
 	int			rval = -1;
 
 	if ((k11 = RSA_get_ex_data(rsa, rsa_idx)) == NULL) {
-		error("RSA_get_ex_data failed for rsa %p", rsa);
+		error("RSA_get_ex_data failed for rsa %p", (void *)rsa);
 		return (-1);
 	}
 

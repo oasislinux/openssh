@@ -1791,7 +1791,7 @@ session_dump(void)
 		    s->used,
 		    s->next_unused,
 		    s->self,
-		    s,
+		    (void *)s,
 		    s->chanid,
 		    (long)s->pid);
 	}
