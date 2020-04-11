@@ -17,11 +17,8 @@
 /* $OpenBSD: cipher-chachapoly.c,v 1.9 2020/04/03 04:27:03 djm Exp $ */
 
 #include "includes.h"
-#ifdef WITH_OPENSSL
-#include "openbsd-compat/openssl-compat.h"
-#endif
 
-#if !defined(HAVE_EVP_CHACHA20) || defined(HAVE_BROKEN_CHACHA20)
+#ifndef WITH_BEARSSL
 
 #include <sys/types.h>
 #include <stdarg.h> /* needed for log.h */
@@ -136,4 +133,4 @@ chachapoly_get_length(struct chachapoly_ctx *ctx,
 	return 0;
 }
 
-#endif /* !defined(HAVE_EVP_CHACHA20) || defined(HAVE_BROKEN_CHACHA20) */
+#endif /* !WITH_BEARSSL */

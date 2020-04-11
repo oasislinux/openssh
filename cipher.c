@@ -49,8 +49,6 @@
 #include "ssherr.h"
 #include "digest.h"
 
-#include "openbsd-compat/openssl-compat.h"
-
 #ifndef WITH_OPENSSL
 #define EVP_CIPHER_CTX void
 #endif

@@ -12,16 +12,19 @@
 
 #include <stdarg.h>
 
-#ifdef WITH_OPENSSL
-#include <openssl/evp.h>
+#ifdef WITH_BEARSSL
+#include <bearssl.h>
 
 int
 crypto_hash_sha512(unsigned char *out, const unsigned char *in,
     unsigned long long inlen)
 {
 
-	if (!EVP_Digest(in, inlen, out, NULL, EVP_sha512(), NULL))
-		return -1;
+	br_sha512_context ctx;
+
+	br_sha512_init(&ctx);
+	br_sha512_update(&ctx, in, inlen);
+	br_sha512_out(&ctx, out);
 	return 0;
 }
 
@@ -42,4 +45,4 @@ crypto_hash_sha512(unsigned char *out, const unsigned char *in,
 	SHA512Final(out, &ctx);
 	return 0;
 }
-#endif /* WITH_OPENSSL */
+#endif /* WITH_BEARSSL */

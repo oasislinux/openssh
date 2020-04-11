@@ -40,6 +40,13 @@
 #  define EC_GROUP	void
 #  define EC_POINT	void
 # endif /* OPENSSL_HAS_ECC */
+#elif defined(WITH_BEARSSL)
+# include <bearssl.h>
+# define DH		void
+# define BIGNUM		void
+# define EC_KEY		br_ec_private_key
+# define EC_GROUP	void
+# define EC_POINT	void
 #else /* WITH_OPENSSL */
 # define DH		void
 # define BIGNUM		void

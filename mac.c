@@ -39,8 +39,6 @@
 #include "ssherr.h"
 #include "sshbuf.h"
 
-#include "openbsd-compat/openssl-compat.h"
-
 #define SSH_DIGEST	1	/* SSH_DIGEST_XXX */
 #define SSH_UMAC	2	/* UMAC (not integrated with OpenSSL) */
 #define SSH_UMAC128	3

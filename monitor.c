@@ -61,7 +61,6 @@
 
 #include "openbsd-compat/sys-tree.h"
 #include "openbsd-compat/sys-queue.h"
-#include "openbsd-compat/openssl-compat.h"
 
 #include "atomicio.h"
 #include "xmalloc.h"

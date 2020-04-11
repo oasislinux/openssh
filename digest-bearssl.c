@@ -1,4 +1,4 @@
-/* $OpenBSD: digest-openssl.c,v 1.7 2017/05/08 22:57:38 djm Exp $ */
+/* $OpenBSD: digest-bearssl.c,v 1.7 2017/05/08 22:57:38 djm Exp $ */
 /*
  * Copyright (c) 2013 Damien Miller <djm@mindrot.org>
  *
@@ -17,51 +17,38 @@
 
 #include "includes.h"
 
-#ifdef WITH_OPENSSL
+#ifdef WITH_BEARSSL
 
 #include <sys/types.h>
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include <openssl/evp.h>
-
-#include "openbsd-compat/openssl-compat.h"
+#include <bearssl.h>
 
 #include "sshbuf.h"
 #include "digest.h"
 #include "ssherr.h"
 
-#ifndef HAVE_EVP_SHA256
-# define EVP_sha256 NULL
-#endif
-#ifndef HAVE_EVP_SHA384
-# define EVP_sha384 NULL
-#endif
-#ifndef HAVE_EVP_SHA512
-# define EVP_sha512 NULL
-#endif
-
 struct ssh_digest_ctx {
 	int alg;
-	EVP_MD_CTX *mdctx;
+	br_hash_compat_context hc;
 };
 
 struct ssh_digest {
 	int id;
 	const char *name;
-	size_t digest_len;
-	const EVP_MD *(*mdfunc)(void);
+	const br_hash_class *class;
 };
 
 /* NB. Indexed directly by algorithm number */
 const struct ssh_digest digests[] = {
-	{ SSH_DIGEST_MD5,	"MD5",	 	16,	EVP_md5 },
-	{ SSH_DIGEST_SHA1,	"SHA1",	 	20,	EVP_sha1 },
-	{ SSH_DIGEST_SHA256,	"SHA256", 	32,	EVP_sha256 },
-	{ SSH_DIGEST_SHA384,	"SHA384",	48,	EVP_sha384 },
-	{ SSH_DIGEST_SHA512,	"SHA512", 	64,	EVP_sha512 },
-	{ -1,			NULL,		0,	NULL },
+	{ SSH_DIGEST_MD5,	"MD5",	 	&br_md5_vtable },
+	{ SSH_DIGEST_SHA1,	"SHA1",	 	&br_sha1_vtable },
+	{ SSH_DIGEST_SHA256,	"SHA256", 	&br_sha256_vtable },
+	{ SSH_DIGEST_SHA384,	"SHA384",	&br_sha384_vtable },
+	{ SSH_DIGEST_SHA512,	"SHA512", 	&br_sha512_vtable },
+	{ -1,			NULL,		NULL },
 };
 
 static const struct ssh_digest *
@@ -71,7 +58,7 @@ ssh_digest_by_alg(int alg)
 		return NULL;
 	if (digests[alg].id != alg) /* sanity */
 		return NULL;
-	if (digests[alg].mdfunc == NULL)
+	if (digests[alg].class == NULL)
 		return NULL;
 	return &(digests[alg]);
 }
@@ -96,18 +83,30 @@ ssh_digest_alg_name(int alg)
 	return digest == NULL ? NULL : digest->name;
 }
 
+static size_t
+hashdesc_out(uint32_t desc)
+{
+	return desc >> BR_HASHDESC_OUT_OFF & BR_HASHDESC_OUT_MASK;
+}
+
+static int
+hashdesc_lblen(uint32_t desc)
+{
+	return desc >> BR_HASHDESC_LBLEN_OFF & BR_HASHDESC_LBLEN_MASK;
+}
+
 size_t
 ssh_digest_bytes(int alg)
 {
 	const struct ssh_digest *digest = ssh_digest_by_alg(alg);
 
-	return digest == NULL ? 0 : digest->digest_len;
+	return digest == NULL ? 0 : hashdesc_out(digest->class->desc);
 }
 
 size_t
 ssh_digest_blocksize(struct ssh_digest_ctx *ctx)
 {
-	return EVP_MD_CTX_block_size(ctx->mdctx);
+	return 1 << hashdesc_lblen(ctx->hc.vtable->desc);
 }
 
 struct ssh_digest_ctx *
@@ -119,33 +118,27 @@ ssh_digest_start(int alg)
 	if (digest == NULL || ((ret = calloc(1, sizeof(*ret))) == NULL))
 		return NULL;
 	ret->alg = alg;
-	if ((ret->mdctx = EVP_MD_CTX_new()) == NULL) {
-		free(ret);
-		return NULL;
-	}
-	if (EVP_DigestInit_ex(ret->mdctx, digest->mdfunc(), NULL) != 1) {
-		ssh_digest_free(ret);
-		return NULL;
-	}
+	digest->class->init(&ret->hc.vtable);
 	return ret;
 }
 
 int
 ssh_digest_copy_state(struct ssh_digest_ctx *from, struct ssh_digest_ctx *to)
 {
+	uint64_t count;
+	unsigned char state[64];
+
 	if (from->alg != to->alg)
 		return SSH_ERR_INVALID_ARGUMENT;
-	/* we have bcopy-style order while openssl has memcpy-style */
-	if (!EVP_MD_CTX_copy_ex(to->mdctx, from->mdctx))
-		return SSH_ERR_LIBCRYPTO_ERROR;
+	count = from->hc.vtable->state(&from->hc.vtable, state);
+	to->hc.vtable->set_state(&to->hc.vtable, state, count);
 	return 0;
 }
 
 int
 ssh_digest_update(struct ssh_digest_ctx *ctx, const void *m, size_t mlen)
 {
-	if (EVP_DigestUpdate(ctx->mdctx, m, mlen) != 1)
-		return SSH_ERR_LIBCRYPTO_ERROR;
+	ctx->hc.vtable->update(&ctx->hc.vtable, m, mlen);
 	return 0;
 }
 
@@ -158,17 +151,10 @@ ssh_digest_update_buffer(struct ssh_digest_ctx *ctx, const struct sshbuf *b)
 int
 ssh_digest_final(struct ssh_digest_ctx *ctx, u_char *d, size_t dlen)
 {
-	const struct ssh_digest *digest = ssh_digest_by_alg(ctx->alg);
-	u_int l = dlen;
-
-	if (digest == NULL || dlen > UINT_MAX)
+	/* No truncation allowed */
+	if (dlen < hashdesc_out(ctx->hc.vtable->desc))
 		return SSH_ERR_INVALID_ARGUMENT;
-	if (dlen < digest->digest_len) /* No truncation allowed */
-		return SSH_ERR_INVALID_ARGUMENT;
-	if (EVP_DigestFinal_ex(ctx->mdctx, d, &l) != 1)
-		return SSH_ERR_LIBCRYPTO_ERROR;
-	if (l != digest->digest_len) /* sanity */
-		return SSH_ERR_INTERNAL_ERROR;
+	ctx->hc.vtable->out(&ctx->hc.vtable, d);
 	return 0;
 }
 
@@ -177,7 +163,6 @@ ssh_digest_free(struct ssh_digest_ctx *ctx)
 {
 	if (ctx == NULL)
 		return;
-	EVP_MD_CTX_free(ctx->mdctx);
 	freezero(ctx, sizeof(*ctx));
 }
 
@@ -185,17 +170,15 @@ int
 ssh_digest_memory(int alg, const void *m, size_t mlen, u_char *d, size_t dlen)
 {
 	const struct ssh_digest *digest = ssh_digest_by_alg(alg);
-	u_int mdlen;
+	br_hash_compat_context hc;
 
 	if (digest == NULL)
 		return SSH_ERR_INVALID_ARGUMENT;
-	if (dlen > UINT_MAX)
+	if (dlen < hashdesc_out(digest->class->desc))
 		return SSH_ERR_INVALID_ARGUMENT;
-	if (dlen < digest->digest_len)
-		return SSH_ERR_INVALID_ARGUMENT;
-	mdlen = dlen;
-	if (!EVP_Digest(m, mlen, d, &mdlen, digest->mdfunc(), NULL))
-		return SSH_ERR_LIBCRYPTO_ERROR;
+	digest->class->init(&hc.vtable);
+	hc.vtable->update(&hc.vtable, m, mlen);
+	hc.vtable->out(&hc.vtable, d);
 	return 0;
 }
 
@@ -204,4 +187,4 @@ ssh_digest_buffer(int alg, const struct sshbuf *b, u_char *d, size_t dlen)
 {
 	return ssh_digest_memory(alg, sshbuf_ptr(b), sshbuf_len(b), d, dlen);
 }
-#endif /* WITH_OPENSSL */
+#endif /* WITH_BEARSSL */

@@ -73,11 +73,9 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#ifdef WITH_OPENSSL
-#include <openssl/evp.h>
-#include <openssl/err.h>
+#ifdef WITH_BEARSSL
+#include <bearssl.h>
 #endif
-#include "openbsd-compat/openssl-compat.h"
 #include "openbsd-compat/sys-queue.h"
 
 #include "xmalloc.h"
@@ -870,10 +868,10 @@ main(int ac, char **av)
 		case 'V':
 			fprintf(stderr, "%s, %s\n",
 			    SSH_RELEASE,
-#ifdef WITH_OPENSSL
-			    OpenSSL_version(OPENSSL_VERSION)
+#ifdef WITH_BEARSSL
+			    "with BearSSL"
 #else
-			    "without OpenSSL"
+			    "without BearSSL"
 #endif
 			);
 			if (opt == 'V')
@@ -1138,10 +1136,10 @@ main(int ac, char **av)
 
 	if (debug_flag)
 		logit("%s, %s", SSH_RELEASE,
-#ifdef WITH_OPENSSL
-		    OpenSSL_version(OPENSSL_VERSION)
+#ifdef WITH_BEARSSL
+		    "with BearSSL"
 #else
-		    "without OpenSSL"
+		    "without BearSSL"
 #endif
 		);
 

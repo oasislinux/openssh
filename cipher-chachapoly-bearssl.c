@@ -17,18 +17,15 @@
 /* $OpenBSD: cipher-chachapoly-libcrypto.c,v 1.1 2020/04/03 04:32:21 djm Exp $ */
 
 #include "includes.h"
-#ifdef WITH_OPENSSL
-#include "openbsd-compat/openssl-compat.h"
-#endif
 
-#if defined(HAVE_EVP_CHACHA20) || !defined(HAVE_BROKEN_CHACHA20)
+#ifdef WITH_BEARSSL
 
 #include <sys/types.h>
 #include <stdarg.h> /* needed for log.h */
 #include <string.h>
 #include <stdio.h>  /* needed for misc.h */
 
-#include <openssl/evp.h>
+#include <bearssl.h>
 
 #include "log.h"
 #include "sshbuf.h"
@@ -36,7 +33,8 @@
 #include "cipher-chachapoly.h"
 
 struct chachapoly_ctx {
-	EVP_CIPHER_CTX *main_evp, *header_evp;
+	u_char main_key[32];
+	u_char header_key[32];
 };
 
 struct chachapoly_ctx *
@@ -48,28 +46,14 @@ chachapoly_new(const u_char *key, u_int keylen)
 		return NULL;
 	if ((ctx = calloc(1, sizeof(*ctx))) == NULL)
 		return NULL;
-	if ((ctx->main_evp = EVP_CIPHER_CTX_new()) == NULL ||
-	    (ctx->header_evp = EVP_CIPHER_CTX_new()) == NULL)
-		goto fail;
-	if (!EVP_CipherInit(ctx->main_evp, EVP_chacha20(), key, NULL, 1))
-		goto fail;
-	if (!EVP_CipherInit(ctx->header_evp, EVP_chacha20(), key + 32, NULL, 1))
-		goto fail;
-	if (EVP_CIPHER_CTX_iv_length(ctx->header_evp) != 16)
-		goto fail;
+	memcpy(ctx->main_key, key, 32);
+	memcpy(ctx->header_key, key + 32, 32);
 	return ctx;
- fail:
-	chachapoly_free(ctx);
-	return NULL;
 }
 
 void
 chachapoly_free(struct chachapoly_ctx *cpctx)
 {
-	if (cpctx == NULL)
-		return;
-	EVP_CIPHER_CTX_free(cpctx->main_evp);
-	EVP_CIPHER_CTX_free(cpctx->header_evp);
 	freezero(cpctx, sizeof(*cpctx));
 }
 
@@ -86,23 +70,18 @@ int
 chachapoly_crypt(struct chachapoly_ctx *ctx, u_int seqnr, u_char *dest,
     const u_char *src, u_int len, u_int aadlen, u_int authlen, int do_encrypt)
 {
-	u_char seqbuf[16]; /* layout: u64 counter || u64 seqno */
-	int r = SSH_ERR_INTERNAL_ERROR;
+	u_char iv[12];
 	u_char expected_tag[POLY1305_TAGLEN], poly_key[POLY1305_KEYLEN];
+	int r = SSH_ERR_INTERNAL_ERROR;
 
 	/*
 	 * Run ChaCha20 once to generate the Poly1305 key. The IV is the
 	 * packet sequence number.
 	 */
-	memset(seqbuf, 0, sizeof(seqbuf));
-	POKE_U64(seqbuf + 8, seqnr);
 	memset(poly_key, 0, sizeof(poly_key));
-	if (!EVP_CipherInit(ctx->main_evp, NULL, NULL, seqbuf, 1) ||
-	    EVP_Cipher(ctx->main_evp, poly_key,
-	    poly_key, sizeof(poly_key)) < 0) {
-		r = SSH_ERR_LIBCRYPTO_ERROR;
-		goto out;
-	}
+	memset(iv, 0, 4);
+	POKE_U64(iv + 4, seqnr);
+	br_chacha20_ct_run(ctx->main_key, iv, 0, poly_key, sizeof(poly_key));
 
 	/* If decrypting, check tag before anything else */
 	if (!do_encrypt) {
@@ -117,20 +96,13 @@ chachapoly_crypt(struct chachapoly_ctx *ctx, u_int seqnr, u_char *dest,
 
 	/* Crypt additional data */
 	if (aadlen) {
-		if (!EVP_CipherInit(ctx->header_evp, NULL, NULL, seqbuf, 1) ||
-		    EVP_Cipher(ctx->header_evp, dest, src, aadlen) < 0) {
-			r = SSH_ERR_LIBCRYPTO_ERROR;
-			goto out;
-		}
+		memcpy(dest, src, aadlen);
+		br_chacha20_ct_run(ctx->header_key, iv, 0, dest, aadlen);
 	}
 
 	/* Set Chacha's block counter to 1 */
-	seqbuf[0] = 1;
-	if (!EVP_CipherInit(ctx->main_evp, NULL, NULL, seqbuf, 1) ||
-	    EVP_Cipher(ctx->main_evp, dest + aadlen, src + aadlen, len) < 0) {
-		r = SSH_ERR_LIBCRYPTO_ERROR;
-		goto out;
-	}
+	memcpy(dest + aadlen, src + aadlen, len);
+	br_chacha20_ct_run(ctx->main_key, iv, 1, dest + aadlen, len);
 
 	/* If encrypting, calculate and append tag */
 	if (do_encrypt) {
@@ -140,7 +112,7 @@ chachapoly_crypt(struct chachapoly_ctx *ctx, u_int seqnr, u_char *dest,
 	r = 0;
  out:
 	explicit_bzero(expected_tag, sizeof(expected_tag));
-	explicit_bzero(seqbuf, sizeof(seqbuf));
+	explicit_bzero(iv, sizeof(iv));
 	explicit_bzero(poly_key, sizeof(poly_key));
 	return r;
 }
@@ -150,17 +122,15 @@ int
 chachapoly_get_length(struct chachapoly_ctx *ctx,
     u_int *plenp, u_int seqnr, const u_char *cp, u_int len)
 {
-	u_char buf[4], seqbuf[16];
+	u_char buf[4], iv[12];
 
 	if (len < 4)
 		return SSH_ERR_MESSAGE_INCOMPLETE;
-	memset(seqbuf, 0, sizeof(seqbuf));
-	POKE_U64(seqbuf + 8, seqnr);
-	if (!EVP_CipherInit(ctx->header_evp, NULL, NULL, seqbuf, 0))
-		return SSH_ERR_LIBCRYPTO_ERROR;
-	if (EVP_Cipher(ctx->header_evp, buf, (u_char *)cp, sizeof(buf)) < 0)
-		return SSH_ERR_LIBCRYPTO_ERROR;
+	memset(iv, 0, 4);
+	POKE_U64(iv + 4, seqnr);
+	memcpy(buf, cp, 4);
+	br_chacha20_ct_run(ctx->header_key, iv, 0, buf, 4);
 	*plenp = PEEK_U32(buf);
 	return 0;
 }
-#endif /* defined(HAVE_EVP_CHACHA20) && !defined(HAVE_BROKEN_CHACHA20) */
+#endif /* WITH_BEARSSL */

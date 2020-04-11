@@ -1,0 +1,239 @@
+This repository contains a port of OpenSSH using BearSSL[0] crypto.
+
+[0] https://bearssl.org
+
+DISCLAIMER: This port has not undergone any code review, and is not
+affiliated with the OpenSSH project. Use at your own risk.
+
+NOTE: If any of your keys are in PKCS#8 or raw PEM format (the
+default before OpenSSH 7.8) and either are RSA or have a passphrase,
+you will need to convert them to the new format first using `ssh-keygen
+-f /path/to/key -p`. See below for more details.
+
+This document collects some details and considerations made during
+the porting process.
+
+OpenSSL is already an optional dependency of OpenSSH, so relevant
+code is guarded by `#ifdef WITH_OPENSSL`. This made it easy to
+identify sections that needed changes and incrementally port them.
+
+Rather than add additional `#ifdef WITH_BEARSSL` sections after
+OpenSSL sections, I opted to replace the OpenSSL sections. This was
+done for a couple reasons. First, I want to make sure that any
+future changes to OpenSSL-specific code results in merge conflicts,
+so I can easily keep up-to-date with the latest OpenSSH version.
+Second, it seems unlikely to me that this would be merged into
+OpenSSH, so there is no point in keeping OpenSSL support around;
+if you want to build with OpenSSL, just use mainline OpenSSH.
+
+ChaCha20
+--------
+
+BearSSL's API takes a 32-bit integer counter and 12-byte IV, as
+described in RFC 7539. The 32-bit integer is used as word 12 in the
+initial state, and the IV is decoded as three little-endian 32-bit
+integers into words 13-15.
+
+In contrast, the OpenSSL API combines the two into a single 16-byte
+input, and the bundled ChaCha20 implementation accepts an 8-byte
+counter and 8-byte IV. Together, these are decoded as four little-endian
+32-bit integers into words 12-15.
+
+In the ChaCha20/Poly1305 cipher used by OpenSSH, the 8-byte IV is
+constructed by encoding a 32-bit sequence number as big-endian into
+8 bytes. Additionally, only two counter values are used; the encodings
+of 0 and 1 as 64-bit little endian (so the 1 appears in 12th word).
+
+Therefore, we can call the BearSSL ChaCha20 implementation using
+counter values 0 and 1, and a 12-byte IV with the first 4 bytes
+initialized to 0, and the last 8 bytes initialized to the big-endian
+encoding of the sequence number.
+
+AES
+---
+
+Not yet implemented using BearSSL. Only aes*-ctr and
+chacha20-poly1305@openssh.com are supported, just as in --without-openssl.
+
+Key exchange
+------------
+
+Not yet implemented using BearSSL. Only curve25519-sha256,
+curve25519-sha256@libssh.org, and sntrup4591761x25519-sha512@tinyssh.org
+are supported, just as in --without-openssl.
+
+Digest
+------
+
+All digests were implemented, using the BearSSL object-oriented
+API. The changes involved here were pretty straightforward.
+
+Entropy
+-------
+
+BearSSL has no global state, so any API that requires randomness
+is passed a br_prng_class explicitly.
+
+When OpenSSH is built with OpenSSL, it seeds the arc4random PRNG
+using RAND_bytes. When it is built without it, it uses getrandom
+and /dev/urandom.
+
+While BearSSL does include HMAC_DRBG and a mechanism to seed it
+from the system, this uses the same entropy sources as OpenSSH
+would. Rather than seed BearSSL's HMAC_DRBG and use that to seed
+arc4random, we instead use an arc4random br_prng_class, which calls
+arc4random_buf to produce random data. This br_prng_class is passed
+to any BearSSL function that requires randomness.
+
+For ECDSA, BearSSL implements RFC 6979 (invented by Thomas Pornin,
+the author of BearSSL) to generate deterministic signatures without
+requiring a source of randomness. So, the only BearSSL APIs we use
+that require randomness are the key generation routines.
+
+sshbuf
+------
+
+The sshkey (de)serialization routines for RSA and EC keys make use
+of OpenSSL-specific sshbuf APIs to get/put bignums and EC points.
+
+Bignums are encoded as big-endian octet strings, and the OpenSSL-specific
+APIs wrap generic `bignum2_bytes` routines. Since BearSSL's RSA
+implementation requires big-endian octet strings as well, we can
+simply use the generic API and remove the OpenSSL-specific one.
+
+EC points are encoded in uncompressed format, as specified in SEC
+1 section 2.3.3. Again, this is the same format used by BearSSL's
+EC implementation. However, there were no corresponding `ec_bytes`
+sshbuf functions, so these were added. Though they are functionally
+the same as the `string` functions, they also contain several checks
+to make sure that the points are in the correct format and within
+the required range.
+
+Additionally sshbuf_get_ec contained a check that the point was
+actually on the curve. To avoid making sshbuf_get_ec_bytes
+BearSSL-specific, this check was moved to sshkey_ec_validate_public,
+which previously had a note that it assumed the point was already
+on the curve.
+
+RSA
+---
+
+BearSSL's RSA implementation uses separate structures for public
+and private keys, containing pointers to big-endian encoded octet
+strings for the parameters, along with their lengths. The actual
+key data backing these structs must be allocated separately.
+
+To simplify this, the BearSSL key structures are wrapped into
+sshkey_rsa_pk and ssha_rsa_sk, containing fixed-size data arrays
+to store the parameters. The maximum size buffer needed for an N-bit
+RSA key pair can be determined with BR_RSA_KBUF_{PRIV,PUB}_SIZE(N).
+By default, BearSSL supports RSA moduli up to 4096 bits, though
+this can be set higher if BR_MAX_RSA_SIZE is changed in BearSSL
+sources. BR_MAX_RSA_SIZE is not exposed in any public header, so
+we define SSH_RSA_MAXIMUM_MODULUS_SIZE to 4096 in sshkey to match
+BearSSL, and use that to determine the key data buffer sizes.
+
+BearSSL's RSA private key structure does not contain the unreduced
+private exponent. Although it has the ability to re-compute the
+private exponent from the reduced exponents, this only works when
+p and q are 3 mod 4, so it can be done in constant time.
+
+So, in sshkey_rsa_sk, we add a separate buffer for the private
+exponent, along with its length. During private key deserialization,
+we save the unreduced private exponent in this buffer. For key
+generation, BearSSL only generates keys where p and q are 3 mod 4,
+so we can use br_rsa_compute_privexp to compute and save the private
+exponent at the same time.
+
+The SSH private key format does not contain reduced private exponents,
+so they are computed in ssh_rsa_complete_crt_parameters. However
+BearSSL does not provide any functions to compute `dp` and `dq`
+from `d`, `p`, and `q`, and although it has modular reduction
+routines for big integers, this is not part of the public API.
+
+For now, we just use the internal method `br_i31_reduce`. In the
+future, hopefully BearSSL can add a new function like
+
+  br_rsa_reduce_privexp(void *dp,
+                        const void *d, size_t dlen,
+                        const void *p, size_t plen);
+
+and we can switch to that instead.
+
+EC
+--
+
+Just as in RSA, we wrap BearSSL's public and private key structures
+into sshkey_ec_pk and sshkey_ec_sk. The size of the data field is
+BR_EC_KBUF_PUB_MAX_SIZE and BR_EC_KBUF_PRIV_MAX_SIZE respectively,
+which is large enough to contain key data for all supported curves.
+
+ecdsa_nid was changed from the OpenSSL curve NIDs to the values in
+IANA's TLS Supported Groups registry[1]. This matches the IDs used
+with the BearSSL API.
+
+To validate private keys, OpenSSH makes the following checks:
+
+* The bit-length of exponent is larger than half the bit-length of
+  the group order.
+
+  Instead, we compare the byte-lengths, since we already have that
+  on hand. Presumably, this check is to reject keys that have been
+  generated improperly, since while it is a valid key, the chance
+  of a random exponent that small is astronomically low.
+
+* The private key is less than the group order - 1.
+
+  We use the same technique used in BearSSL during key generation:
+  we calculate the carry of a subtraction of the exponent from the
+  order.
+
+For public key validation, OpenSSH makes the following checks:
+
+* The point is from a prime field rather than a binary one.
+
+  This check is not necessary with BearSSL since the only curves
+  we specify IDs for in sshkey_ecdsa_nid_from_name are the prime
+  curves. Also, BearSSL does not implement the binary curves.
+
+* The point is not the group identity.
+
+  This check is taken care of when we decode the x and y coordinates
+  from the point's uncompressed form.
+
+* The bit-length of each coordinate is greater than half that of
+  the group order.
+
+  After we identify the point's coordinates, we trim any leading
+  zeros, and again, check the byte-lengths rather than the bit-lengths.
+
+* The curve order times the point is the identity.
+
+  We skip this check, because that is the definition of the curve
+  order.
+
+* Each coordinate is less than the group order - 1.
+
+  We use the same technique described above for the private key.
+
+[1] https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-8
+
+DSA
+---
+
+DSA is not supported by BearSSL, so it was removed.
+
+PKCS#8 key format
+-----------------
+
+While BearSSL is able to read and write keys in PEM-encoded PKCS#8
+and raw formats, it does not support encryption with a passphrase.
+Additionally, BearSSL's RSA private key decoder discards the public
+and private exponent, saving only the reduced private exponents.
+As described earlier, OpenSSH's private key serialization format
+contains the unreduced private exponent, and BearSSL can only
+recompute the private exponent when p and q are 3 mod 4.
+
+So, we just do our best here and support these key formats only
+when there no passphrase and the RSA primes have the property
+mentioned above.

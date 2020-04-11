@@ -29,10 +29,9 @@
 #include <string.h>
 #include <stdio.h>
 
-#ifdef WITH_OPENSSL
-#include <openssl/objects.h>
-#include <openssl/ec.h>
-#endif /* WITH_OPENSSL */
+#ifdef WITH_BEARSSL
+#include <bearssl.h>
+#endif /* WITH_BEARSSL */
 
 #include "log.h"
 #include "misc.h"
@@ -187,14 +186,12 @@ sshsk_free_sign_response(struct sk_sign_response *r)
 	freezero(r, sizeof(*r));
 }
 
-#ifdef WITH_OPENSSL
+#ifdef WITH_BEARSSL
 /* Assemble key from response */
 static int
 sshsk_ecdsa_assemble(struct sk_enroll_response *resp, struct sshkey **keyp)
 {
 	struct sshkey *key = NULL;
-	struct sshbuf *b = NULL;
-	EC_POINT *q = NULL;
 	int r;
 
 	*keyp = NULL;
@@ -203,33 +200,24 @@ sshsk_ecdsa_assemble(struct sk_enroll_response *resp, struct sshkey **keyp)
 		r = SSH_ERR_ALLOC_FAIL;
 		goto out;
 	}
-	key->ecdsa_nid = NID_X9_62_prime256v1;
-	if ((key->ecdsa = EC_KEY_new_by_curve_name(key->ecdsa_nid)) == NULL ||
-	    (q = EC_POINT_new(EC_KEY_get0_group(key->ecdsa))) == NULL ||
-	    (b = sshbuf_new()) == NULL) {
+	key->ecdsa_nid = BR_EC_secp256r1;
+	if ((key->ecdsa_pk = calloc(1, sizeof(*key->ecdsa_pk))) == NULL) {
 		error("%s: allocation failed", __func__);
 		r = SSH_ERR_ALLOC_FAIL;
 		goto out;
 	}
-	if ((r = sshbuf_put_string(b,
-	    resp->public_key, resp->public_key_len)) != 0) {
-		error("%s: buffer error: %s", __func__, ssh_err(r));
-		goto out;
-	}
-	if ((r = sshbuf_get_ec(b, q, EC_KEY_get0_group(key->ecdsa))) != 0) {
-		error("%s: parse key: %s", __func__, ssh_err(r));
+	if (resp->public_key_len > sizeof(key->ecdsa_pk->data)) {
+		error("%s: public key is too large", __func__);
 		r = SSH_ERR_INVALID_FORMAT;
 		goto out;
 	}
-	if (sshkey_ec_validate_public(EC_KEY_get0_group(key->ecdsa), q) != 0) {
+	key->ecdsa_pk->key.q = key->ecdsa_pk->data;
+	key->ecdsa_pk->key.qlen = resp->public_key_len;
+	memcpy(key->ecdsa_pk->key.q, resp->public_key, resp->public_key_len);
+	if (sshkey_ec_validate_public(key->ecdsa_nid, key->ecdsa_pk->key.q,
+	    key->ecdsa_pk->key.qlen) != 0) {
 		error("Authenticator returned invalid ECDSA key");
 		r = SSH_ERR_KEY_INVALID_EC_VALUE;
-		goto out;
-	}
-	if (EC_KEY_set_public_key(key->ecdsa, q) != 1) {
-		/* XXX assume it is a allocation error */
-		error("%s: allocation failed", __func__);
-		r = SSH_ERR_ALLOC_FAIL;
 		goto out;
 	}
 	/* success */
@@ -237,12 +225,10 @@ sshsk_ecdsa_assemble(struct sk_enroll_response *resp, struct sshkey **keyp)
 	key = NULL; /* transferred */
 	r = 0;
  out:
-	EC_POINT_free(q);
 	sshkey_free(key);
-	sshbuf_free(b);
 	return r;
 }
-#endif /* WITH_OPENSSL */
+#endif /* WITH_BEARSSL */
 
 static int
 sshsk_ed25519_assemble(struct sk_enroll_response *resp, struct sshkey **keyp)
@@ -292,12 +278,12 @@ sshsk_key_from_response(int alg, const char *application, uint8_t flags,
 		goto out;
 	}
 	switch (alg) {
-#ifdef WITH_OPENSSL
+#ifdef WITH_BEARSSL
 	case SSH_SK_ECDSA:
 		if ((r = sshsk_ecdsa_assemble(resp, &key)) != 0)
 			goto out;
 		break;
-#endif /* WITH_OPENSSL */
+#endif /* WITH_BEARSSL */
 	case SSH_SK_ED25519:
 		if ((r = sshsk_ed25519_assemble(resp, &key)) != 0)
 			goto out;
@@ -449,11 +435,11 @@ sshsk_enroll(int type, const char *provider_path, const char *device,
 		goto out;
 
 	switch (type) {
-#ifdef WITH_OPENSSL
+#ifdef WITH_BEARSSL
 	case KEY_ECDSA_SK:
 		alg = SSH_SK_ECDSA;
 		break;
-#endif /* WITH_OPENSSL */
+#endif /* WITH_BEARSSL */
 	case KEY_ED25519_SK:
 		alg = SSH_SK_ED25519;
 		break;
@@ -532,7 +518,7 @@ sshsk_enroll(int type, const char *provider_path, const char *device,
 	return r;
 }
 
-#ifdef WITH_OPENSSL
+#ifdef WITH_BEARSSL
 static int
 sshsk_ecdsa_sig(struct sk_sign_response *resp, struct sshbuf *sig)
 {
@@ -576,7 +562,7 @@ sshsk_ecdsa_sig(struct sk_sign_response *resp, struct sshbuf *sig)
 	sshbuf_free(inner_sig);
 	return r;
 }
-#endif /* WITH_OPENSSL */
+#endif /* WITH_BEARSSL */
 
 static int
 sshsk_ed25519_sig(struct sk_sign_response *resp, struct sshbuf *sig)
@@ -628,11 +614,11 @@ sshsk_sign(const char *provider_path, struct sshkey *key,
 		*lenp = 0;
 	type = sshkey_type_plain(key->type);
 	switch (type) {
-#ifdef WITH_OPENSSL
+#ifdef WITH_BEARSSL
 	case KEY_ECDSA_SK:
 		alg = SSH_SK_ECDSA;
 		break;
-#endif /* WITH_OPENSSL */
+#endif /* WITH_BEARSSL */
 	case KEY_ED25519_SK:
 		alg = SSH_SK_ED25519;
 		break;
@@ -675,12 +661,12 @@ sshsk_sign(const char *provider_path, struct sshkey *key,
 		goto out;
 	}
 	switch (type) {
-#ifdef WITH_OPENSSL
+#ifdef WITH_BEARSSL
 	case KEY_ECDSA_SK:
 		if ((r = sshsk_ecdsa_sig(resp, sig)) != 0)
 			goto out;
 		break;
-#endif /* WITH_OPENSSL */
+#endif /* WITH_BEARSSL */
 	case KEY_ED25519_SK:
 		if ((r = sshsk_ed25519_sig(resp, sig)) != 0)
 			goto out;

@@ -73,11 +73,8 @@
 #include <unistd.h>
 #include <limits.h>
 
-#ifdef WITH_OPENSSL
-#include <openssl/dh.h>
-#include <openssl/bn.h>
-#include <openssl/rand.h>
-#include "openbsd-compat/openssl-compat.h"
+#ifdef WITH_BEARSSL
+#include <bearssl.h>
 #endif
 
 #ifdef HAVE_SECUREWARE
@@ -855,10 +852,10 @@ usage(void)
 {
 	fprintf(stderr, "%s, %s\n",
 	    SSH_RELEASE,
-#ifdef WITH_OPENSSL
-	    OpenSSL_version(OPENSSL_VERSION)
+#if WITH_BEARSSL
+	    "with BearSSL"
 #else
-	    "without OpenSSL"
+	    "without BearSSL"
 #endif
 	);
 	fprintf(stderr,
@@ -903,9 +900,6 @@ send_rexec_state(int fd, struct sshbuf *conf)
 	if ((r = sshbuf_put_stringb(m, conf)) != 0 ||
 	    (r = sshbuf_put_stringb(m, inc)) != 0)
 		fatal("%s: buffer error: %s", __func__, ssh_err(r));
-#if defined(WITH_OPENSSL) && !defined(OPENSSL_PRNG_ONLY)
-	rexec_send_rng_seed(m);
-#endif
 	if (ssh_msg_send(fd, 0, m) == -1)
 		fatal("%s: ssh_msg_send failed", __func__);
 
@@ -937,10 +931,6 @@ recv_rexec_state(int fd, struct sshbuf *conf)
 	if ((r = sshbuf_get_string(m, &cp, &len)) != 0 ||
 	    (r = sshbuf_get_stringb(m, inc)) != 0)
 		fatal("%s: buffer error: %s", __func__, ssh_err(r));
-
-#if defined(WITH_OPENSSL) && !defined(OPENSSL_PRNG_ONLY)
-	rexec_recv_rng_seed(m);
-#endif
 
 	if (conf != NULL && (r = sshbuf_put(conf, cp, len)))
 		fatal("%s: buffer error: %s", __func__, ssh_err(r));
@@ -1745,10 +1735,10 @@ main(int ac, char **av)
 	}
 
 	debug("sshd version %s, %s", SSH_VERSION,
-#ifdef WITH_OPENSSL
-	    OpenSSL_version(OPENSSL_VERSION)
+#ifdef WITH_BEARSSL
+	    "with BearSSL"
 #else
-	    "without OpenSSL"
+	    "without BearSSL"
 #endif
 	);
 

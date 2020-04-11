@@ -28,28 +28,39 @@
 
 #include <sys/types.h>
 
-#ifdef WITH_OPENSSL
-#include <openssl/rsa.h>
-#include <openssl/dsa.h>
-# ifdef OPENSSL_HAS_ECC
-#  include <openssl/ec.h>
-#  include <openssl/ecdsa.h>
-# else /* OPENSSL_HAS_ECC */
-#  define EC_KEY	void
-#  define EC_GROUP	void
-#  define EC_POINT	void
-# endif /* OPENSSL_HAS_ECC */
-#else /* WITH_OPENSSL */
-# define BIGNUM		void
-# define RSA		void
-# define DSA		void
-# define EC_KEY		void
-# define EC_GROUP	void
-# define EC_POINT	void
-#endif /* WITH_OPENSSL */
-
 #define SSH_RSA_MINIMUM_MODULUS_SIZE	1024
+#define SSH_RSA_MAXIMUM_MODULUS_SIZE	4096
 #define SSH_KEY_MAX_SIGN_DATA_SIZE	(1 << 20)
+
+#ifdef WITH_BEARSSL
+#include <bearssl.h>
+
+struct sshkey_rsa_sk {
+	br_rsa_private_key	key;
+	u_char			data[BR_RSA_KBUF_PRIV_SIZE(SSH_RSA_MAXIMUM_MODULUS_SIZE)];
+
+	/* BearSSL uses reduced private exponents, and can only compute
+	 * `d` from `dp` and `dq` when they are 3 mod 4, so keep track
+	 * of `d` as well. */
+	u_char			d[(SSH_RSA_MAXIMUM_MODULUS_SIZE + 7) / 8];
+	size_t			dlen;
+};
+
+struct sshkey_rsa_pk {
+	br_rsa_public_key	key;
+	u_char			data[BR_RSA_KBUF_PUB_SIZE(SSH_RSA_MAXIMUM_MODULUS_SIZE)];
+};
+
+struct sshkey_ecdsa_sk {
+	br_ec_private_key	key;
+	u_char			data[BR_EC_KBUF_PRIV_MAX_SIZE];
+};
+
+struct sshkey_ecdsa_pk {
+	br_ec_public_key	key;
+	u_char			data[BR_EC_KBUF_PUB_MAX_SIZE];
+};
+#endif /* WITH_BEARSSL */
 
 struct sshbuf;
 
@@ -124,12 +135,12 @@ struct sshkey {
 	int	 type;
 	int	 flags;
 	/* KEY_RSA */
-	RSA	*rsa;
-	/* KEY_DSA */
-	DSA	*dsa;
+	struct sshkey_rsa_sk	*rsa_sk;
+	struct sshkey_rsa_pk	*rsa_pk;
 	/* KEY_ECDSA and KEY_ECDSA_SK */
-	int	 ecdsa_nid;	/* NID of curve */
-	EC_KEY	*ecdsa;
+	int	 		 ecdsa_nid;	/* IANA curve ID */
+	struct sshkey_ecdsa_sk	*ecdsa_sk;
+	struct sshkey_ecdsa_pk	*ecdsa_pk;
 	/* KEY_ED25519 and KEY_ED25519_SK */
 	u_char	*ed25519_sk;
 	u_char	*ed25519_pk;
@@ -212,10 +223,11 @@ int		 sshkey_curve_name_to_nid(const char *);
 const char *	 sshkey_curve_nid_to_name(int);
 u_int		 sshkey_curve_nid_to_bits(int);
 int		 sshkey_ecdsa_bits_to_nid(int);
-int		 sshkey_ecdsa_key_to_nid(EC_KEY *);
 int		 sshkey_ec_nid_to_hash_alg(int nid);
-int		 sshkey_ec_validate_public(const EC_GROUP *, const EC_POINT *);
-int		 sshkey_ec_validate_private(const EC_KEY *);
+int		 sshkey_ec_validate_public(int nid, const u_char *q,
+    size_t qlen);
+int		 sshkey_ec_validate_private(int nid, const u_char *x,
+    size_t xlen);
 const char	*sshkey_ssh_name(const struct sshkey *);
 const char	*sshkey_ssh_name_plain(const struct sshkey *);
 int		 sshkey_names_valid2(const char *, int);
@@ -241,10 +253,6 @@ int	 sshkey_check_sigtype(const u_char *, size_t, const char *);
 const char *sshkey_sigalg_by_name(const char *);
 int	 sshkey_get_sigtype(const u_char *, size_t, char **);
 
-/* for debug */
-void	sshkey_dump_ec_point(const EC_GROUP *, const EC_POINT *);
-void	sshkey_dump_ec_key(const EC_KEY *);
-
 /* private key parsing and serialisation */
 int	sshkey_private_serialize(struct sshkey *key, struct sshbuf *buf);
 int	sshkey_private_serialize_opt(struct sshkey *key, struct sshbuf *buf,
@@ -263,7 +271,7 @@ int	sshkey_parse_pubkey_from_private_fileblob_type(struct sshbuf *blob,
     int type, struct sshkey **pubkeyp);
 
 /* XXX should be internal, but used by ssh-keygen */
-int ssh_rsa_complete_crt_parameters(struct sshkey *, const BIGNUM *);
+int ssh_rsa_complete_crt_parameters(struct sshkey_rsa_sk *, u_char *, size_t);
 
 /* stateful keys (e.g. XMSS) */
 #ifdef NO_ATTRIBUTE_ON_PROTOTYPE_ARGS
@@ -315,18 +323,6 @@ int ssh_xmss_sign(const struct sshkey *key, u_char **sigp, size_t *lenp,
 int ssh_xmss_verify(const struct sshkey *key,
     const u_char *signature, size_t signaturelen,
     const u_char *data, size_t datalen, u_int compat);
-#endif
-
-#if !defined(WITH_OPENSSL)
-# undef RSA
-# undef DSA
-# undef EC_KEY
-# undef EC_GROUP
-# undef EC_POINT
-#elif !defined(OPENSSL_HAS_ECC)
-# undef EC_KEY
-# undef EC_GROUP
-# undef EC_POINT
 #endif
 
 #endif /* SSHKEY_H */

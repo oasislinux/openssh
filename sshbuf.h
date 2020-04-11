@@ -230,16 +230,9 @@ int	sshbuf_peek_string_direct(const struct sshbuf *buf, const u_char **valp,
 int	sshbuf_put_bignum2_bytes(struct sshbuf *buf, const void *v, size_t len);
 int	sshbuf_get_bignum2_bytes_direct(struct sshbuf *buf,
 	    const u_char **valp, size_t *lenp);
-#ifdef WITH_OPENSSL
-int	sshbuf_get_bignum2(struct sshbuf *buf, BIGNUM **valp);
-int	sshbuf_put_bignum2(struct sshbuf *buf, const BIGNUM *v);
-# ifdef OPENSSL_HAS_ECC
-int	sshbuf_get_ec(struct sshbuf *buf, EC_POINT *v, const EC_GROUP *g);
-int	sshbuf_get_eckey(struct sshbuf *buf, EC_KEY *v);
-int	sshbuf_put_ec(struct sshbuf *buf, const EC_POINT *v, const EC_GROUP *g);
-int	sshbuf_put_eckey(struct sshbuf *buf, const EC_KEY *v);
-# endif /* OPENSSL_HAS_ECC */
-#endif /* WITH_OPENSSL */
+int	sshbuf_put_ec_bytes(struct sshbuf *buf, const u_char *v, size_t len);
+int	sshbuf_get_ec_bytes_direct(struct sshbuf *buf,
+	    const u_char **valp, size_t *lenp);
 
 /* Dump the contents of the buffer in a human-readable format */
 void	sshbuf_dump(struct sshbuf *buf, FILE *f);

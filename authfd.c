@@ -486,11 +486,9 @@ ssh_add_identity_constrained(int sock, struct sshkey *key,
 		return SSH_ERR_ALLOC_FAIL;
 
 	switch (key->type) {
-#ifdef WITH_OPENSSL
+#ifdef WITH_BEARSSL
 	case KEY_RSA:
 	case KEY_RSA_CERT:
-	case KEY_DSA:
-	case KEY_DSA_CERT:
 	case KEY_ECDSA:
 	case KEY_ECDSA_CERT:
 	case KEY_ECDSA_SK:

@@ -50,11 +50,6 @@
 #endif
 #include "openbsd-compat/sys-queue.h"
 
-#ifdef WITH_OPENSSL
-#include <openssl/evp.h>
-#include "openbsd-compat/openssl-compat.h"
-#endif
-
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>

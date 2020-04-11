@@ -25,14 +25,9 @@
 #include <stddef.h>
 #include <stdarg.h>
 
-#ifdef WITH_OPENSSL
-#include <openssl/opensslv.h>
-#include <openssl/crypto.h>
-#include <openssl/bn.h>
-#include <openssl/ec.h>
-#include <openssl/ecdsa.h>
-#include <openssl/evp.h>
-#endif /* WITH_OPENSSL */
+#ifdef WITH_BEARSSL
+#include <bearssl.h>
+#endif /* WITH_BEARSSL */
 
 #include <fido.h>
 #include <fido/credman.h>
@@ -55,15 +50,6 @@
 /* #define SK_DEBUG 1 */
 
 #define MAX_FIDO_DEVICES	256
-
-/* Compatibility with OpenSSH 1.0.x */
-#if (OPENSSL_VERSION_NUMBER < 0x10100000L)
-#define ECDSA_SIG_get0(sig, pr, ps) \
-	do { \
-		(*pr) = sig->r; \
-		(*ps) = sig->s; \
-	} while (0)
-#endif
 
 /* Return the version of the middleware API */
 uint32_t sk_api_version(void);
@@ -266,7 +252,7 @@ find_device(const char *path, const uint8_t *message, size_t message_len,
 	return dev;
 }
 
-#ifdef WITH_OPENSSL
+#ifdef WITH_BEARSSL
 /*
  * The key returned via fido_cred_pubkey_ptr() is in affine coordinates,
  * but the API expects a SEC1 octet string.
@@ -276,21 +262,11 @@ pack_public_key_ecdsa(const fido_cred_t *cred,
     struct sk_enroll_response *response)
 {
 	const uint8_t *ptr;
-	BIGNUM *x = NULL, *y = NULL;
-	EC_POINT *q = NULL;
-	EC_GROUP *g = NULL;
 	int ret = -1;
 
 	response->public_key = NULL;
 	response->public_key_len = 0;
 
-	if ((x = BN_new()) == NULL ||
-	    (y = BN_new()) == NULL ||
-	    (g = EC_GROUP_new_by_curve_name(NID_X9_62_prime256v1)) == NULL ||
-	    (q = EC_POINT_new(g)) == NULL) {
-		skdebug(__func__, "libcrypto setup failed");
-		goto out;
-	}
 	if ((ptr = fido_cred_pubkey_ptr(cred)) == NULL) {
 		skdebug(__func__, "fido_cred_pubkey_ptr failed");
 		goto out;
@@ -301,31 +277,13 @@ pack_public_key_ecdsa(const fido_cred_t *cred,
 		goto out;
 	}
 
-	if (BN_bin2bn(ptr, 32, x) == NULL ||
-	    BN_bin2bn(ptr + 32, 32, y) == NULL) {
-		skdebug(__func__, "BN_bin2bn failed");
-		goto out;
-	}
-	if (EC_POINT_set_affine_coordinates_GFp(g, q, x, y, NULL) != 1) {
-		skdebug(__func__, "EC_POINT_set_affine_coordinates_GFp failed");
-		goto out;
-	}
-	response->public_key_len = EC_POINT_point2oct(g, q,
-	    POINT_CONVERSION_UNCOMPRESSED, NULL, 0, NULL);
-	if (response->public_key_len == 0 || response->public_key_len > 2048) {
-		skdebug(__func__, "bad pubkey length %zu",
-		    response->public_key_len);
-		goto out;
-	}
+	response->public_key_len = 65;
 	if ((response->public_key = malloc(response->public_key_len)) == NULL) {
 		skdebug(__func__, "malloc pubkey failed");
 		goto out;
 	}
-	if (EC_POINT_point2oct(g, q, POINT_CONVERSION_UNCOMPRESSED,
-	    response->public_key, response->public_key_len, NULL) == 0) {
-		skdebug(__func__, "EC_POINT_point2oct failed");
-		goto out;
-	}
+	response->public_key[0] = 4;	/* uncompressed format */
+	memcpy(response->public_key + 1, ptr, 64);
 	/* success */
 	ret = 0;
  out:
@@ -334,13 +292,9 @@ pack_public_key_ecdsa(const fido_cred_t *cred,
 		free(response->public_key);
 		response->public_key = NULL;
 	}
-	EC_POINT_free(q);
-	EC_GROUP_free(g);
-	BN_clear_free(x);
-	BN_clear_free(y);
 	return ret;
 }
-#endif /* WITH_OPENSSL */
+#endif /* WITH_BEARSSL */
 
 static int
 pack_public_key_ed25519(const fido_cred_t *cred,
@@ -379,10 +333,10 @@ pack_public_key(uint32_t alg, const fido_cred_t *cred,
     struct sk_enroll_response *response)
 {
 	switch(alg) {
-#ifdef WITH_OPENSSL
+#ifdef WITH_BEARSSL
 	case SSH_SK_ECDSA:
 		return pack_public_key_ecdsa(cred, response);
-#endif /* WITH_OPENSSL */
+#endif /* WITH_BEARSSL */
 	case SSH_SK_ED25519:
 		return pack_public_key_ed25519(cred, response);
 	default:
@@ -470,11 +424,11 @@ sk_enroll(uint32_t alg, const uint8_t *challenge, size_t challenge_len,
 
 	*enroll_response = NULL;
 	switch(alg) {
-#ifdef WITH_OPENSSL
+#ifdef WITH_BEARSSL
 	case SSH_SK_ECDSA:
 		cose_alg = COSE_ES256;
 		break;
-#endif /* WITH_OPENSSL */
+#endif /* WITH_BEARSSL */
 	case SSH_SK_ED25519:
 		cose_alg = COSE_EDDSA;
 		break;
@@ -601,35 +555,40 @@ sk_enroll(uint32_t alg, const uint8_t *challenge, size_t challenge_len,
 	return ret;
 }
 
-#ifdef WITH_OPENSSL
+#ifdef WITH_BEARSSL
 static int
 pack_sig_ecdsa(fido_assert_t *assert, struct sk_sign_response *response)
 {
-	ECDSA_SIG *sig = NULL;
-	const BIGNUM *sig_r, *sig_s;
-	const unsigned char *cp;
-	size_t sig_len;
+	const unsigned char *asn1;
+	unsigned char *raw;
+	size_t asn1_len, raw_len;
 	int ret = -1;
 
-	cp = fido_assert_sig_ptr(assert, 0);
-	sig_len = fido_assert_sig_len(assert, 0);
-	if ((sig = d2i_ECDSA_SIG(NULL, &cp, sig_len)) == NULL) {
-		skdebug(__func__, "d2i_ECDSA_SIG failed");
+	asn1 = fido_assert_sig_ptr(assert, 0);
+	asn1_len = fido_assert_sig_len(assert, 0);
+	/* raw length will never be more than twice the ASN.1 length */
+	if ((raw = reallocarray(NULL, 2, asn1_len)) == NULL)  {
+		skdebug(__func__, "calloc raw signature failed");
 		goto out;
 	}
-	ECDSA_SIG_get0(sig, &sig_r, &sig_s);
-	response->sig_r_len = BN_num_bytes(sig_r);
-	response->sig_s_len = BN_num_bytes(sig_s);
-	if ((response->sig_r = calloc(1, response->sig_r_len)) == NULL ||
-	    (response->sig_s = calloc(1, response->sig_s_len)) == NULL) {
-		skdebug(__func__, "calloc signature failed");
+	memcpy(raw, asn1, asn1_len);
+	if ((raw_len = br_ecdsa_asn1_to_raw(raw, asn1_len)) == 0 ||
+	    raw_len % 2 != 0) {
+		skdebug(__func__, "converting signature to raw format failed");
 		goto out;
 	}
-	BN_bn2bin(sig_r, response->sig_r);
-	BN_bn2bin(sig_s, response->sig_s);
+	response->sig_r_len = raw_len / 2;
+	response->sig_s_len = raw_len / 2;
+	if ((response->sig_r = malloc(response->sig_r_len)) == NULL ||
+	    (response->sig_s = malloc(response->sig_s_len)) == NULL) {
+		skdebug(__func__, "malloc signature failed");
+		goto out;
+	}
+	memcpy(response->sig_r, raw, raw_len / 2);
+	memcpy(response->sig_s, raw + raw_len / 2, raw_len / 2);
 	ret = 0;
  out:
-	ECDSA_SIG_free(sig);
+	freezero(raw, raw_len);
 	if (ret != 0) {
 		free(response->sig_r);
 		free(response->sig_s);
@@ -638,7 +597,7 @@ pack_sig_ecdsa(fido_assert_t *assert, struct sk_sign_response *response)
 	}
 	return ret;
 }
-#endif /* WITH_OPENSSL */
+#endif /* WITH_BEARSSL */
 
 static int
 pack_sig_ed25519(fido_assert_t *assert, struct sk_sign_response *response)
@@ -673,10 +632,10 @@ pack_sig(uint32_t  alg, fido_assert_t *assert,
     struct sk_sign_response *response)
 {
 	switch(alg) {
-#ifdef WITH_OPENSSL
+#ifdef WITH_BEARSSL
 	case SSH_SK_ECDSA:
 		return pack_sig_ecdsa(assert, response);
-#endif /* WITH_OPENSSL */
+#endif /* WITH_BEARSSL */
 	case SSH_SK_ED25519:
 		return pack_sig_ed25519(assert, response);
 	default:

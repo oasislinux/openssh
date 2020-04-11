@@ -629,3 +629,40 @@ sshbuf_get_bignum2_bytes_direct(struct sshbuf *buf,
 	}
 	return 0;
 }
+
+int
+sshbuf_put_ec_bytes(struct sshbuf *buf, const u_char *v, size_t len)
+{
+	if (len > SSHBUF_MAX_ECPOINT || len % 2 != 1 || v[0] != 4)
+		return SSH_ERR_INVALID_ARGUMENT;
+	return sshbuf_put_string(buf, v, len);
+}
+
+int
+sshbuf_get_ec_bytes_direct(struct sshbuf *buf, const u_char **valp,
+    size_t *lenp)
+{
+	const u_char *d;
+	size_t len;
+	int r;
+
+	if ((r = sshbuf_peek_string_direct(buf, &d, &len)) != 0)
+		return r;
+	/* Refuse overlong bignums */
+	if (len > SSHBUF_MAX_ECPOINT)
+		return SSH_ERR_ECPOINT_TOO_LARGE;
+	/* Only handle uncompressed points */
+	if (len % 2 != 1 || *d != 4)
+		return SSH_ERR_INVALID_FORMAT;
+	if (valp != NULL)
+		*valp = d;
+	if (lenp != NULL)
+		*lenp = len;
+	if (sshbuf_consume(buf, len + 4) != 0) {
+		/* Shouldn't happen */
+		SSHBUF_DBG(("SSH_ERR_INTERNAL_ERROR"));
+		SSHBUF_ABORT();
+		return SSH_ERR_INTERNAL_ERROR;
+	}
+	return 0;
+}

@@ -40,9 +40,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-#ifdef WITH_OPENSSL
-# include <openssl/evp.h>
-# include "openbsd-compat/openssl-compat.h"
+#ifdef WITH_BEARSSL
+# include <bearssl.h>
 #endif
 
 #include <errno.h>
@@ -73,14 +72,11 @@ extern char *__progname;
 
 /* Default files to add */
 static char *default_files[] = {
-#ifdef WITH_OPENSSL
+#ifdef WITH_BEARSSL
 	_PATH_SSH_CLIENT_ID_RSA,
-	_PATH_SSH_CLIENT_ID_DSA,
-#ifdef OPENSSL_HAS_ECC
 	_PATH_SSH_CLIENT_ID_ECDSA,
 	_PATH_SSH_CLIENT_ID_ECDSA_SK,
-#endif
-#endif /* WITH_OPENSSL */
+#endif /* WITH_BEARSSL */
 	_PATH_SSH_CLIENT_ID_ED25519,
 	_PATH_SSH_CLIENT_ID_ED25519_SK,
 	_PATH_SSH_CLIENT_ID_XMSS,

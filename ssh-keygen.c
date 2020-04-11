@@ -18,10 +18,8 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 
-#ifdef WITH_OPENSSL
-#include <openssl/evp.h>
-#include <openssl/pem.h>
-#include "openbsd-compat/openssl-compat.h"
+#ifdef WITH_BEARSSL
+#include <bearssl.h>
 #endif
 
 #ifdef HAVE_STDINT_H
@@ -66,7 +64,7 @@
 #include "ssh-sk.h"
 #include "sk-api.h" /* XXX for SSH_SK_USER_PRESENCE_REQD; remove */
 
-#ifdef WITH_OPENSSL
+#ifdef WITH_BEARSSL
 # define DEFAULT_KEY_TYPE_NAME "rsa"
 #else
 # define DEFAULT_KEY_TYPE_NAME "ed25519"
@@ -183,13 +181,10 @@ type_bits_valid(int type, const char *name, u_int32_t *bitsp)
 	if (type == KEY_UNSPEC)
 		fatal("unknown key type %s", key_type_name);
 	if (*bitsp == 0) {
-#ifdef WITH_OPENSSL
+#ifdef WITH_BEARSSL
 		u_int nid;
 
 		switch(type) {
-		case KEY_DSA:
-			*bitsp = DEFAULT_BITS_DSA;
-			break;
 		case KEY_ECDSA:
 			if (name != NULL &&
 			    (nid = sshkey_ecdsa_nid_from_name(name)) > 0)
@@ -203,28 +198,20 @@ type_bits_valid(int type, const char *name, u_int32_t *bitsp)
 		}
 #endif
 	}
-#ifdef WITH_OPENSSL
+#ifdef WITH_BEARSSL
 	switch (type) {
-	case KEY_DSA:
-		if (*bitsp != 1024)
-			fatal("Invalid DSA key length: must be 1024 bits");
-		break;
 	case KEY_RSA:
 		if (*bitsp < SSH_RSA_MINIMUM_MODULUS_SIZE)
 			fatal("Invalid RSA key length: minimum is %d bits",
 			    SSH_RSA_MINIMUM_MODULUS_SIZE);
-		else if (*bitsp > OPENSSL_RSA_MAX_MODULUS_BITS)
+		else if (*bitsp > SSH_RSA_MAXIMUM_MODULUS_SIZE)
 			fatal("Invalid RSA key length: maximum is %d bits",
-			    OPENSSL_RSA_MAX_MODULUS_BITS);
+			    SSH_RSA_MAXIMUM_MODULUS_SIZE);
 		break;
 	case KEY_ECDSA:
 		if (sshkey_ecdsa_bits_to_nid(*bitsp) == -1)
 			fatal("Invalid ECDSA key length: valid lengths are "
-#ifdef OPENSSL_HAS_NISTP521
 			    "256, 384 or 521 bits");
-#else
-			    "256 or 384 bits");
-#endif
 	}
 #endif
 }
@@ -267,7 +254,6 @@ ask_filename(struct passwd *pw, const char *prompt)
 		case KEY_DSA:
 			name = _PATH_SSH_CLIENT_ID_DSA;
 			break;
-#ifdef OPENSSL_HAS_ECC
 		case KEY_ECDSA_CERT:
 		case KEY_ECDSA:
 			name = _PATH_SSH_CLIENT_ID_ECDSA;
@@ -276,7 +262,6 @@ ask_filename(struct passwd *pw, const char *prompt)
 		case KEY_ECDSA_SK:
 			name = _PATH_SSH_CLIENT_ID_ECDSA_SK;
 			break;
-#endif
 		case KEY_RSA_CERT:
 		case KEY_RSA:
 			name = _PATH_SSH_CLIENT_ID_RSA;
@@ -338,7 +323,7 @@ load_identity(const char *filename, char **commentp)
 #define SSH_COM_PRIVATE_BEGIN		"---- BEGIN SSH2 ENCRYPTED PRIVATE KEY ----"
 #define	SSH_COM_PRIVATE_KEY_MAGIC	0x3f6ff9eb
 
-#ifdef WITH_OPENSSL
+#ifdef WITH_BEARSSL
 static void
 do_convert_to_ssh2(struct passwd *pw, struct sshkey *k)
 {
@@ -373,6 +358,7 @@ static void
 do_convert_to_pkcs8(struct sshkey *k)
 {
 	switch (sshkey_type_plain(k->type)) {
+#if 0
 	case KEY_RSA:
 		if (!PEM_write_RSA_PUBKEY(stdout, k->rsa))
 			fatal("PEM_write_RSA_PUBKEY failed");
@@ -381,7 +367,6 @@ do_convert_to_pkcs8(struct sshkey *k)
 		if (!PEM_write_DSA_PUBKEY(stdout, k->dsa))
 			fatal("PEM_write_DSA_PUBKEY failed");
 		break;
-#ifdef OPENSSL_HAS_ECC
 	case KEY_ECDSA:
 		if (!PEM_write_EC_PUBKEY(stdout, k->ecdsa))
 			fatal("PEM_write_EC_PUBKEY failed");
@@ -397,6 +382,7 @@ static void
 do_convert_to_pem(struct sshkey *k)
 {
 	switch (sshkey_type_plain(k->type)) {
+#if 0
 	case KEY_RSA:
 		if (!PEM_write_RSAPublicKey(stdout, k->rsa))
 			fatal("PEM_write_RSAPublicKey failed");
@@ -405,7 +391,6 @@ do_convert_to_pem(struct sshkey *k)
 		if (!PEM_write_DSA_PUBKEY(stdout, k->dsa))
 			fatal("PEM_write_DSA_PUBKEY failed");
 		break;
-#ifdef OPENSSL_HAS_ECC
 	case KEY_ECDSA:
 		if (!PEM_write_EC_PUBKEY(stdout, k->ecdsa))
 			fatal("PEM_write_EC_PUBKEY failed");
@@ -451,7 +436,7 @@ do_convert_to(struct passwd *pw)
  * instead of 16.
  */
 static void
-buffer_get_bignum_bits(struct sshbuf *b, BIGNUM *value)
+buffer_get_bignum_bits_direct(struct sshbuf *b, const u_char **valp, size_t *lenp)
 {
 	u_int bytes, bignum_bits;
 	int r;
@@ -462,8 +447,8 @@ buffer_get_bignum_bits(struct sshbuf *b, BIGNUM *value)
 	if (sshbuf_len(b) < bytes)
 		fatal("%s: input buffer too small: need %d have %zu",
 		    __func__, bytes, sshbuf_len(b));
-	if (BN_bin2bn(sshbuf_ptr(b), bytes, value) == NULL)
-		fatal("%s: BN_bin2bn failed", __func__);
+	*valp = sshbuf_ptr(b);
+	*lenp = bytes;
 	if ((r = sshbuf_consume(b, bytes)) != 0)
 		fatal("%s: buffer error: %s", __func__, ssh_err(r));
 }
@@ -473,15 +458,13 @@ do_convert_private_ssh2(struct sshbuf *b)
 {
 	struct sshkey *key = NULL;
 	char *type, *cipher;
-	u_char e1, e2, e3, *sig = NULL, data[] = "abcde12345";
+	u_char *sig = NULL, data[] = "abcde12345";
 	int r, rlen, ktype;
 	u_int magic, i1, i2, i3, i4;
 	size_t slen;
-	u_long e;
-	BIGNUM *dsa_p = NULL, *dsa_q = NULL, *dsa_g = NULL;
-	BIGNUM *dsa_pub_key = NULL, *dsa_priv_key = NULL;
-	BIGNUM *rsa_n = NULL, *rsa_e = NULL, *rsa_d = NULL;
-	BIGNUM *rsa_p = NULL, *rsa_q = NULL, *rsa_iqmp = NULL;
+	u_char rsa_e[3];
+	const u_char *rsa_n, *rsa_d, *rsa_p, *rsa_q, *rsa_iq;
+	size_t rsa_elen, rsa_nlen, rsa_dlen, rsa_plen, rsa_qlen, rsa_iqlen;
 
 	if ((r = sshbuf_get_u32(b, &magic)) != 0)
 		fatal("%s: buffer error: %s", __func__, ssh_err(r));
@@ -507,9 +490,7 @@ do_convert_private_ssh2(struct sshbuf *b)
 	}
 	free(cipher);
 
-	if (strstr(type, "dsa")) {
-		ktype = KEY_DSA;
-	} else if (strstr(type, "rsa")) {
+	if (strstr(type, "rsa")) {
 		ktype = KEY_RSA;
 	} else {
 		free(type);
@@ -520,67 +501,49 @@ do_convert_private_ssh2(struct sshbuf *b)
 	free(type);
 
 	switch (key->type) {
-	case KEY_DSA:
-		if ((dsa_p = BN_new()) == NULL ||
-		    (dsa_q = BN_new()) == NULL ||
-		    (dsa_g = BN_new()) == NULL ||
-		    (dsa_pub_key = BN_new()) == NULL ||
-		    (dsa_priv_key = BN_new()) == NULL)
-			fatal("%s: BN_new", __func__);
-		buffer_get_bignum_bits(b, dsa_p);
-		buffer_get_bignum_bits(b, dsa_g);
-		buffer_get_bignum_bits(b, dsa_q);
-		buffer_get_bignum_bits(b, dsa_pub_key);
-		buffer_get_bignum_bits(b, dsa_priv_key);
-		if (!DSA_set0_pqg(key->dsa, dsa_p, dsa_q, dsa_g))
-			fatal("%s: DSA_set0_pqg failed", __func__);
-		dsa_p = dsa_q = dsa_g = NULL; /* transferred */
-		if (!DSA_set0_key(key->dsa, dsa_pub_key, dsa_priv_key))
-			fatal("%s: DSA_set0_key failed", __func__);
-		dsa_pub_key = dsa_priv_key = NULL; /* transferred */
-		break;
 	case KEY_RSA:
-		if ((r = sshbuf_get_u8(b, &e1)) != 0 ||
-		    (e1 < 30 && (r = sshbuf_get_u8(b, &e2)) != 0) ||
-		    (e1 < 30 && (r = sshbuf_get_u8(b, &e3)) != 0))
+		key->rsa_pk = xcalloc(1, sizeof(*key->rsa_pk));
+		key->rsa_sk = xcalloc(1, sizeof(*key->rsa_sk));
+
+		if ((r = sshbuf_get_u8(b, &rsa_e[0])) != 0 ||
+		    (rsa_e[0] < 30 && (r = sshbuf_get_u8(b, &rsa_e[1])) != 0) ||
+		    (rsa_e[0] < 30 && (r = sshbuf_get_u8(b, &rsa_e[2])) != 0))
 			fatal("%s: buffer error: %s", __func__, ssh_err(r));
-		e = e1;
-		debug("e %lx", e);
-		if (e < 30) {
-			e <<= 8;
-			e += e2;
-			debug("e %lx", e);
-			e <<= 8;
-			e += e3;
-			debug("e %lx", e);
-		}
-		if ((rsa_e = BN_new()) == NULL)
-			fatal("%s: BN_new", __func__);
-		if (!BN_set_word(rsa_e, e)) {
-			BN_clear_free(rsa_e);
-			sshkey_free(key);
-			return NULL;
-		}
-		if ((rsa_n = BN_new()) == NULL ||
-		    (rsa_d = BN_new()) == NULL ||
-		    (rsa_p = BN_new()) == NULL ||
-		    (rsa_q = BN_new()) == NULL ||
-		    (rsa_iqmp = BN_new()) == NULL)
-			fatal("%s: BN_new", __func__);
-		buffer_get_bignum_bits(b, rsa_d);
-		buffer_get_bignum_bits(b, rsa_n);
-		buffer_get_bignum_bits(b, rsa_iqmp);
-		buffer_get_bignum_bits(b, rsa_q);
-		buffer_get_bignum_bits(b, rsa_p);
-		if (!RSA_set0_key(key->rsa, rsa_n, rsa_e, rsa_d))
-			fatal("%s: RSA_set0_key failed", __func__);
-		rsa_n = rsa_e = rsa_d = NULL; /* transferred */
-		if (!RSA_set0_factors(key->rsa, rsa_p, rsa_q))
-			fatal("%s: RSA_set0_factors failed", __func__);
-		rsa_p = rsa_q = NULL; /* transferred */
-		if ((r = ssh_rsa_complete_crt_parameters(key, rsa_iqmp)) != 0)
+		rsa_elen = rsa_e[0] < 30 ? 3 : 1;
+		key->rsa_pk->key.e = key->rsa_pk->data;
+		key->rsa_pk->key.elen = rsa_elen;
+		memcpy(key->rsa_pk->key.e, rsa_e, rsa_elen);
+
+		buffer_get_bignum_bits_direct(b, &rsa_d, &rsa_dlen);
+		buffer_get_bignum_bits_direct(b, &rsa_n, &rsa_nlen);
+		buffer_get_bignum_bits_direct(b, &rsa_iq, &rsa_iqlen);
+		buffer_get_bignum_bits_direct(b, &rsa_q, &rsa_qlen);
+		buffer_get_bignum_bits_direct(b, &rsa_p, &rsa_plen);
+
+		if (key->rsa_pk->key.elen + rsa_nlen > sizeof(key->rsa_pk->data) ||
+		    rsa_dlen > sizeof(key->rsa_sk->d) ||
+		    rsa_iqlen + rsa_plen + rsa_qlen > sizeof(key->rsa_sk->data))
+			fatal("%s: RSA key is too large", __func__);
+
+		key->rsa_sk->dlen = rsa_dlen;
+		memcpy(key->rsa_sk->d, rsa_d, rsa_dlen);
+
+		key->rsa_sk->key.iq = key->rsa_sk->data;
+		key->rsa_sk->key.iqlen = rsa_iqlen;
+		memcpy(key->rsa_sk->key.iq, rsa_iq, rsa_iqlen);
+
+		key->rsa_sk->key.p = key->rsa_sk->key.iq + rsa_iqlen;
+		key->rsa_sk->key.plen = rsa_plen;
+		memcpy(key->rsa_sk->key.p, rsa_p, rsa_plen);
+
+		key->rsa_sk->key.q = key->rsa_sk->key.p + rsa_plen;
+		key->rsa_sk->key.qlen = rsa_qlen;
+		memcpy(key->rsa_sk->key.q, rsa_q, rsa_qlen);
+
+		if ((r = ssh_rsa_complete_crt_parameters(key->rsa_sk,
+		    key->rsa_sk->key.q + rsa_qlen, sizeof(key->rsa_sk->data) -
+		    (rsa_iqlen + rsa_plen + rsa_qlen))) != 0)
 			fatal("generate RSA parameters failed: %s", ssh_err(r));
-		BN_clear_free(rsa_iqmp);
 		break;
 	}
 	rlen = sshbuf_len(b);
@@ -677,6 +640,7 @@ do_convert_from_ssh2(struct passwd *pw, struct sshkey **k, int *private)
 	fclose(fp);
 }
 
+#if 0
 static void
 do_convert_from_pkcs8(struct sshkey **k, int *private)
 {
@@ -697,13 +661,6 @@ do_convert_from_pkcs8(struct sshkey **k, int *private)
 		(*k)->type = KEY_RSA;
 		(*k)->rsa = EVP_PKEY_get1_RSA(pubkey);
 		break;
-	case EVP_PKEY_DSA:
-		if ((*k = sshkey_new(KEY_UNSPEC)) == NULL)
-			fatal("sshkey_new failed");
-		(*k)->type = KEY_DSA;
-		(*k)->dsa = EVP_PKEY_get1_DSA(pubkey);
-		break;
-#ifdef OPENSSL_HAS_ECC
 	case EVP_PKEY_EC:
 		if ((*k = sshkey_new(KEY_UNSPEC)) == NULL)
 			fatal("sshkey_new failed");
@@ -711,7 +668,6 @@ do_convert_from_pkcs8(struct sshkey **k, int *private)
 		(*k)->ecdsa = EVP_PKEY_get1_EC_KEY(pubkey);
 		(*k)->ecdsa_nid = sshkey_ecdsa_key_to_nid((*k)->ecdsa);
 		break;
-#endif
 	default:
 		fatal("%s: unsupported pubkey type %d", __func__,
 		    EVP_PKEY_base_id(pubkey));
@@ -738,6 +694,7 @@ do_convert_from_pem(struct sshkey **k, int *private)
 	}
 	fatal("%s: unrecognised raw private key format", __func__);
 }
+#endif
 
 static void
 do_convert_from(struct passwd *pw)
@@ -755,12 +712,14 @@ do_convert_from(struct passwd *pw)
 	case FMT_RFC4716:
 		do_convert_from_ssh2(pw, &k, &private);
 		break;
+#if 0
 	case FMT_PKCS8:
 		do_convert_from_pkcs8(&k, &private);
 		break;
 	case FMT_PEM:
 		do_convert_from_pem(&k, &private);
 		break;
+#endif
 	default:
 		fatal("%s: unknown key format %d", __func__, convert_format);
 	}
@@ -772,20 +731,16 @@ do_convert_from(struct passwd *pw)
 			fprintf(stdout, "\n");
 	} else {
 		switch (k->type) {
-		case KEY_DSA:
-			ok = PEM_write_DSAPrivateKey(stdout, k->dsa, NULL,
-			    NULL, 0, NULL, NULL);
-			break;
-#ifdef OPENSSL_HAS_ECC
+#if 0
 		case KEY_ECDSA:
 			ok = PEM_write_ECPrivateKey(stdout, k->ecdsa, NULL,
 			    NULL, 0, NULL, NULL);
 			break;
-#endif
 		case KEY_RSA:
 			ok = PEM_write_RSAPrivateKey(stdout, k->rsa, NULL,
 			    NULL, 0, NULL, NULL);
 			break;
+#endif
 		default:
 			fatal("%s: unsupported key type %s", __func__,
 			    sshkey_type(k));
@@ -1036,13 +991,10 @@ do_gen_all_hostkeys(struct passwd *pw)
 		char *key_type_display;
 		char *path;
 	} key_types[] = {
-#ifdef WITH_OPENSSL
+#ifdef WITH_BEARSSL
 		{ "rsa", "RSA" ,_PATH_HOST_RSA_KEY_FILE },
-		{ "dsa", "DSA", _PATH_HOST_DSA_KEY_FILE },
-#ifdef OPENSSL_HAS_ECC
 		{ "ecdsa", "ECDSA",_PATH_HOST_ECDSA_KEY_FILE },
-#endif /* OPENSSL_HAS_ECC */
-#endif /* WITH_OPENSSL */
+#endif /* WITH_BEARSSL */
 		{ "ed25519", "ED25519",_PATH_HOST_ED25519_KEY_FILE },
 #ifdef WITH_XMSS
 		{ "xmss", "XMSS",_PATH_HOST_XMSS_KEY_FILE },
@@ -3482,15 +3434,15 @@ main(int argc, char **argv)
 		do_change_passphrase(pw);
 	if (change_comment)
 		do_change_comment(pw, identity_comment);
-#ifdef WITH_OPENSSL
+#ifdef WITH_BEARSSL
 	if (convert_to)
 		do_convert_to(pw);
 	if (convert_from)
 		do_convert_from(pw);
-#else /* WITH_OPENSSL */
+#else /* WITH_BEARSSL */
 	if (convert_to || convert_from)
 		fatal("key conversion disabled at compile time");
-#endif /* WITH_OPENSSL */
+#endif /* WITH_BEARSSL */
 	if (print_public)
 		do_print_public(pw);
 	if (rr_hostname != NULL) {

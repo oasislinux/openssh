@@ -26,15 +26,13 @@
 
 #include "includes.h"
 
-#if defined(WITH_OPENSSL) && defined(OPENSSL_HAS_ECC)
+#ifdef WITH_BEARSSL
 
 #include <sys/types.h>
 
-#include <openssl/bn.h>
-#include <openssl/ec.h>
-#include <openssl/ecdsa.h>
-#include <openssl/evp.h>
+#include <bearssl.h>
 
+#include <stdlib.h>
 #include <string.h>
 
 #include "sshbuf.h"
@@ -43,18 +41,16 @@
 #define SSHKEY_INTERNAL
 #include "sshkey.h"
 
-#include "openbsd-compat/openssl-compat.h"
-
 /* ARGSUSED */
 int
 ssh_ecdsa_sign(const struct sshkey *key, u_char **sigp, size_t *lenp,
     const u_char *data, size_t datalen, u_int compat)
 {
-	ECDSA_SIG *sig = NULL;
-	const BIGNUM *sig_r, *sig_s;
 	int hash_alg;
+	const br_hash_class *hash_class = NULL;
 	u_char digest[SSH_DIGEST_MAX_LENGTH];
-	size_t len, dlen;
+	u_char sig[132];	/* maximum ECDSA signature length */
+	size_t len, slen;
 	struct sshbuf *b = NULL, *bb = NULL;
 	int ret = SSH_ERR_INTERNAL_ERROR;
 
@@ -63,18 +59,33 @@ ssh_ecdsa_sign(const struct sshkey *key, u_char **sigp, size_t *lenp,
 	if (sigp != NULL)
 		*sigp = NULL;
 
-	if (key == NULL || key->ecdsa == NULL ||
+	if (key == NULL || key->ecdsa_sk == NULL ||
 	    sshkey_type_plain(key->type) != KEY_ECDSA)
 		return SSH_ERR_INVALID_ARGUMENT;
 
-	if ((hash_alg = sshkey_ec_nid_to_hash_alg(key->ecdsa_nid)) == -1 ||
-	    (dlen = ssh_digest_bytes(hash_alg)) == 0)
+	if ((hash_alg = sshkey_ec_nid_to_hash_alg(key->ecdsa_nid)) == -1)
 		return SSH_ERR_INTERNAL_ERROR;
 	if ((ret = ssh_digest_memory(hash_alg, data, datalen,
 	    digest, sizeof(digest))) != 0)
 		goto out;
 
-	if ((sig = ECDSA_do_sign(digest, dlen, key->ecdsa)) == NULL) {
+	switch (hash_alg) {
+	case SSH_DIGEST_SHA256:
+		hash_class = &br_sha256_vtable;
+		break;
+	case SSH_DIGEST_SHA384:
+		hash_class = &br_sha384_vtable;
+		break;
+	case SSH_DIGEST_SHA512:
+		hash_class = &br_sha512_vtable;
+		break;
+	default:
+		return SSH_ERR_INTERNAL_ERROR;
+	}
+
+	if ((slen = br_ecdsa_sign_raw_get_default()(br_ec_get_default(),
+	    hash_class, digest, &key->ecdsa_sk->key, sig)) == 0 ||
+	    slen % 2 != 0) {
 		ret = SSH_ERR_LIBCRYPTO_ERROR;
 		goto out;
 	}
@@ -83,9 +94,8 @@ ssh_ecdsa_sign(const struct sshkey *key, u_char **sigp, size_t *lenp,
 		ret = SSH_ERR_ALLOC_FAIL;
 		goto out;
 	}
-	ECDSA_SIG_get0(sig, &sig_r, &sig_s);
-	if ((ret = sshbuf_put_bignum2(bb, sig_r)) != 0 ||
-	    (ret = sshbuf_put_bignum2(bb, sig_s)) != 0)
+	if ((ret = sshbuf_put_bignum2_bytes(bb, sig, slen / 2)) != 0 ||
+	    (ret = sshbuf_put_bignum2_bytes(bb, sig + slen / 2, slen / 2)) != 0)
 		goto out;
 	if ((ret = sshbuf_put_cstring(b, sshkey_ssh_name_plain(key))) != 0 ||
 	    (ret = sshbuf_put_stringb(b, bb)) != 0)
@@ -105,7 +115,6 @@ ssh_ecdsa_sign(const struct sshkey *key, u_char **sigp, size_t *lenp,
 	explicit_bzero(digest, sizeof(digest));
 	sshbuf_free(b);
 	sshbuf_free(bb);
-	ECDSA_SIG_free(sig);
 	return ret;
 }
 
@@ -115,8 +124,10 @@ ssh_ecdsa_verify(const struct sshkey *key,
     const u_char *signature, size_t signaturelen,
     const u_char *data, size_t datalen, u_int compat)
 {
-	ECDSA_SIG *sig = NULL;
-	BIGNUM *sig_r = NULL, *sig_s = NULL;
+	u_char sig[132];	/* maximum ECDSA signature length */
+	size_t slen;
+	const u_char *sig_r = NULL, *sig_s = NULL;
+	size_t sig_rlen, sig_slen;
 	int hash_alg;
 	u_char digest[SSH_DIGEST_MAX_LENGTH];
 	size_t dlen;
@@ -124,7 +135,7 @@ ssh_ecdsa_verify(const struct sshkey *key,
 	struct sshbuf *b = NULL, *sigbuf = NULL;
 	char *ktype = NULL;
 
-	if (key == NULL || key->ecdsa == NULL ||
+	if (key == NULL || key->ecdsa_pk == NULL ||
 	    sshkey_type_plain(key->type) != KEY_ECDSA ||
 	    signature == NULL || signaturelen == 0)
 		return SSH_ERR_INVALID_ARGUMENT;
@@ -151,20 +162,21 @@ ssh_ecdsa_verify(const struct sshkey *key,
 	}
 
 	/* parse signature */
-	if (sshbuf_get_bignum2(sigbuf, &sig_r) != 0 ||
-	    sshbuf_get_bignum2(sigbuf, &sig_s) != 0) {
+	if (sshbuf_get_bignum2_bytes_direct(sigbuf, &sig_r, &sig_rlen) != 0 ||
+	    sshbuf_get_bignum2_bytes_direct(sigbuf, &sig_s, &sig_slen) != 0 ||
+	    sig_rlen > sizeof(sig) / 2 || sig_slen > sizeof(sig) / 2) {
 		ret = SSH_ERR_INVALID_FORMAT;
 		goto out;
 	}
-	if ((sig = ECDSA_SIG_new()) == NULL) {
-		ret = SSH_ERR_ALLOC_FAIL;
-		goto out;
+	memcpy(sig, sig_r, sig_rlen);
+	if (sig_rlen < sig_slen) {
+		memmove(sig, sig + (sig_slen - sig_rlen), sig_rlen);
+		memset(sig, 0, sig_slen - sig_rlen);
+		sig_rlen = sig_slen;
 	}
-	if (!ECDSA_SIG_set0(sig, sig_r, sig_s)) {
-		ret = SSH_ERR_LIBCRYPTO_ERROR;
-		goto out;
-	}
-	sig_r = sig_s = NULL; /* transferred */
+	memset(sig + sig_rlen, 0, sig_rlen - sig_slen);
+	memcpy(sig + sig_rlen + (sig_rlen - sig_slen), sig_s, sig_slen);
+	slen = sig_rlen * 2;
 
 	if (sshbuf_len(sigbuf) != 0) {
 		ret = SSH_ERR_UNEXPECTED_TRAILING_DATA;
@@ -174,27 +186,19 @@ ssh_ecdsa_verify(const struct sshkey *key,
 	    digest, sizeof(digest))) != 0)
 		goto out;
 
-	switch (ECDSA_do_verify(digest, dlen, sig, key->ecdsa)) {
-	case 1:
-		ret = 0;
-		break;
-	case 0:
+	if (br_ecdsa_vrfy_raw_get_default()(br_ec_get_default(), digest, dlen,
+	    &key->ecdsa_pk->key, sig, slen) != 1) {
 		ret = SSH_ERR_SIGNATURE_INVALID;
-		goto out;
-	default:
-		ret = SSH_ERR_LIBCRYPTO_ERROR;
 		goto out;
 	}
 
  out:
+	explicit_bzero(sig, sizeof(sig));
 	explicit_bzero(digest, sizeof(digest));
 	sshbuf_free(sigbuf);
 	sshbuf_free(b);
-	ECDSA_SIG_free(sig);
-	BN_clear_free(sig_r);
-	BN_clear_free(sig_s);
 	free(ktype);
 	return ret;
 }
 
-#endif /* WITH_OPENSSL && OPENSSL_HAS_ECC */
+#endif /* WITH_BEARSSL */

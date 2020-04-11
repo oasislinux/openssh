@@ -34,8 +34,6 @@
 #include "ssherr.h"
 #include "sshbuf.h"
 
-#include "openbsd-compat/openssl-compat.h"
-
 #include <string.h>
 
 int	_ssh_exchange_banner(struct ssh *);

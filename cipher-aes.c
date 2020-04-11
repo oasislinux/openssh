@@ -24,9 +24,6 @@
 
 #include "includes.h"
 
-/* compatibility with old or broken OpenSSL versions */
-#include "openbsd-compat/openssl-compat.h"
-
 #ifdef USE_BUILTIN_RIJNDAEL
 #include <sys/types.h>
 

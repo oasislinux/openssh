@@ -39,11 +39,6 @@
 
 #ifndef HAVE_ARC4RANDOM
 
-#ifdef WITH_OPENSSL
-#include <openssl/rand.h>
-#include <openssl/err.h>
-#endif
-
 #include "log.h"
 
 #define KEYSTREAM_ONLY
@@ -81,10 +76,10 @@ _rs_init(u_char *buf, size_t n)
 	chacha_ivsetup(&rs, buf + KEYSZ);
 }
 
-#ifndef WITH_OPENSSL
-# ifndef SSH_RANDOM_DEV
-#  define SSH_RANDOM_DEV "/dev/urandom"
-# endif /* SSH_RANDOM_DEV */
+#ifndef SSH_RANDOM_DEV
+# define SSH_RANDOM_DEV "/dev/urandom"
+#endif /* SSH_RANDOM_DEV */
+
 static void
 getrnd(u_char *s, size_t len)
 {
@@ -111,20 +106,13 @@ getrnd(u_char *s, size_t len)
 	}
 	close(fd);
 }
-#endif /* WITH_OPENSSL */
 
 static void
 _rs_stir(void)
 {
 	u_char rnd[KEYSZ + IVSZ];
 
-#ifdef WITH_OPENSSL
-	if (RAND_bytes(rnd, sizeof(rnd)) <= 0)
-		fatal("Couldn't obtain random bytes (error 0x%lx)",
-		    (unsigned long)ERR_get_error());
-#else
 	getrnd(rnd, sizeof(rnd));
-#endif
 
 	if (!rs_initialized) {
 		rs_initialized = 1;
