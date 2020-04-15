@@ -31,6 +31,7 @@
 #include <openssl/bn.h>
 #include <openssl/ec.h>
 #include <openssl/ecdsa.h>
+#include <openssl/evp.h>
 #endif /* WITH_OPENSSL */
 
 #include <fido.h>
