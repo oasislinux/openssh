@@ -140,7 +140,7 @@ int	sshbuf_allocate(struct sshbuf *buf, size_t len);
 /*
  * Reserve len bytes in buf.
  * Returns 0 on success and a pointer to the first reserved byte via the
- * optional dpp parameter or a negative * SSH_ERR_* error code on failure.
+ * optional dpp parameter or a negative SSH_ERR_* error code on failure.
  */
 int	sshbuf_reserve(struct sshbuf *buf, size_t len, u_char **dpp);
 
