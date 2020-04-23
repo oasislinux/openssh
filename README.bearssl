@@ -174,47 +174,48 @@ with the BearSSL API.
 
 To validate private keys, OpenSSH makes the following checks:
 
-* The bit-length of exponent is larger than half the bit-length of
-  the group order.
+1. The bit-length of exponent is larger than half the bit-length of
+   the group order.
 
-  Instead, we compare the byte-lengths, since we already have that
-  on hand. Presumably, this check is to reject keys that have been
-  generated improperly, since while it is a valid key, the chance
-  of a random exponent that small is astronomically low.
+   Instead, we compare the byte-lengths, since we already have that
+   on hand. Presumably, this check is to reject keys that have been
+   generated improperly, since while it is a valid key, the chance
+   of a random exponent that small is astronomically low.
 
-* The private key is less than the group order - 1.
+2. The private key is less than the group order - 1.
 
-  We use the same technique used in BearSSL during key generation:
-  we calculate the carry of a subtraction of the exponent from the
-  order.
+   We use the same technique used in BearSSL during key generation:
+   we calculate the carry of a subtraction of the exponent from the
+   order.
 
 For public key validation, OpenSSH makes the following checks:
 
-* The point is from a prime field rather than a binary one.
+1. The point is from a prime field rather than a binary one.
 
-  This check is not necessary with BearSSL since the only curves
-  we specify IDs for in sshkey_ecdsa_nid_from_name are the prime
-  curves. Also, BearSSL does not implement the binary curves.
+    This check is not necessary with BearSSL since the only curves
+    we specify IDs for in sshkey_ecdsa_nid_from_name are the prime
+    curves. Also, BearSSL does not implement the binary curves.
 
-* The point is not the group identity.
+2. The point is not the group identity.
 
-  This check is taken care of when we decode the x and y coordinates
-  from the point's uncompressed form.
+   This check is taken care of when we decode the x and y coordinates
+   from the point's uncompressed form.
 
-* The bit-length of each coordinate is greater than half that of
-  the group order.
+3. The bit-length of each coordinate is greater than half that of
+   the group order.
 
-  After we identify the point's coordinates, we trim any leading
-  zeros, and again, check the byte-lengths rather than the bit-lengths.
+   After we identify the point's coordinates, we trim any leading
+   zeros, and again, check the byte-lengths rather than the
+   bit-lengths.
 
-* The curve order times the point is the identity.
+4. The curve order times the point is the identity.
 
-  We skip this check, because that is the definition of the curve
-  order.
+   We skip this check, because that is the definition of the curve
+   order.
 
-* Each coordinate is less than the group order - 1.
+5. Each coordinate is less than the group order - 1.
 
-  We use the same technique described above for the private key.
+   We use the same technique described above for the private key.
 
 [1] https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-8
 
