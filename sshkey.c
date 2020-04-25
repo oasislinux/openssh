@@ -1541,9 +1541,9 @@ sshkey_generate(int type, u_int bits, struct sshkey **keyp)
 			break;
 		}
 		if (br_ec_keygen(&rng, br_ec_get_default(), &k->ecdsa_sk->key,
-		    &k->ecdsa_sk->data, k->ecdsa_nid) == 0 ||
+		    k->ecdsa_sk->data, k->ecdsa_nid) == 0 ||
 		    br_ec_compute_pub(br_ec_get_default(), &k->ecdsa_pk->key,
-		    &k->ecdsa_pk->data, &k->ecdsa_sk->key) == 0) {
+		    k->ecdsa_pk->data, &k->ecdsa_sk->key) == 0) {
 			ret = SSH_ERR_LIBCRYPTO_ERROR;
 			break;
 		}
@@ -1557,7 +1557,7 @@ sshkey_generate(int type, u_int bits, struct sshkey **keyp)
 		}
 		privexp = br_rsa_compute_privexp_get_default();
 		if (br_rsa_keygen_get_default()(&rng, &k->rsa_sk->key,
-		    &k->rsa_sk->data, &k->rsa_pk->key, &k->rsa_pk->data,
+		    k->rsa_sk->data, &k->rsa_pk->key, k->rsa_pk->data,
 		    bits, 3) != 1 ||
 		    privexp(NULL, &k->rsa_sk->key, 3) >= sizeof(k->rsa_sk->d) ||
 		    (k->rsa_sk->dlen = privexp(k->rsa_sk->d,
