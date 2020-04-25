@@ -4192,6 +4192,7 @@ sshkey_parse_private_pem_fileblob(struct sshbuf *blob, int type,
 			goto out;
 		}
 		prv->ecdsa_nid = ec->curve;
+		prv->ecdsa_sk->key.curve = ec->curve;
 		prv->ecdsa_sk->key.x = prv->ecdsa_sk->data;
 		prv->ecdsa_sk->key.xlen = ec->xlen;
 		memcpy(prv->ecdsa_sk->key.x, ec->x, ec->xlen);
