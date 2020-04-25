@@ -1555,6 +1555,11 @@ sshkey_generate(int type, u_int bits, struct sshkey **keyp)
 			ret = SSH_ERR_ALLOC_FAIL;
 			break;
 		}
+		if (bits < SSH_RSA_MINIMUM_MODULUS_SIZE ||
+		    bits > SSH_RSA_MAXIMUM_MODULUS_SIZE) {
+			ret = SSH_ERR_KEY_LENGTH;
+			break;
+		}
 		privexp = br_rsa_compute_privexp_get_default();
 		if (br_rsa_keygen_get_default()(&rng, &k->rsa_sk->key,
 		    k->rsa_sk->data, &k->rsa_pk->key, k->rsa_pk->data,
