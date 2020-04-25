@@ -52,8 +52,20 @@ encoding of the sequence number.
 AES
 ---
 
-Not yet implemented using BearSSL. Only aes*-ctr and
-chacha20-poly1305@openssh.com are supported, just as in --without-openssl.
+The aes*-ctr, aes*-cbc, and aes*-gcm@openssh.com ciphers are
+implemented using BearSSL.
+
+For AES-CTR, SSH uses the entire 16-bytes as an IV, which is
+incremented for each block. However, BearSSL uses the initial 12
+bytes as a fixed IV, and the final 4 bytes are used as the counter.
+Since the initial counter value comes from the IV, it is possible
+that it would roll over in the middle of an operation. In this case,
+we increment the value in the initial 12 bytes, and then process
+whatever's left.
+
+For AES-GCM, SSH splits the 12-byte IV into a 4-byte fixed field,
+and a 8-byte invocation counter. This counter is incremented once
+per cipher operation.
 
 Key exchange
 ------------

@@ -43,23 +43,44 @@
 #include <stdarg.h>
 #include <stdio.h>
 
+#ifdef WITH_BEARSSL
+#include <bearssl.h>
+#endif
+
 #include "cipher.h"
+#ifndef WITH_BEARSSL
+#include "cipher-aesctr.h"
+#endif
+#include "cipher-chachapoly.h"
 #include "misc.h"
 #include "sshbuf.h"
 #include "ssherr.h"
 #include "digest.h"
 
-#ifndef WITH_OPENSSL
-#define EVP_CIPHER_CTX void
-#endif
-
 struct sshcipher_ctx {
 	int	plaintext;
 	int	encrypt;
-	EVP_CIPHER_CTX *evp;
 	struct chachapoly_ctx *cp_ctx;
-	struct aesctr_ctx ac_ctx; /* XXX union with evp? */
+#ifdef WITH_BEARSSL
+	union {
+		br_aes_ct64_cbcenc_keys cbcenc;
+		br_aes_ct64_cbcdec_keys cbcdec;
+		br_aes_ct64_ctr_keys ctr;
+	} keys;
+	br_gcm_context gcm;
+	u_char iv[16];
+#else
+	struct aesctr_ctx ac_ctx;
+#endif
 	const struct sshcipher *cipher;
+};
+
+enum sshcipher_types {
+	CIPHER_NONE,
+	CIPHER_AESCBC,
+	CIPHER_AESCTR,
+	CIPHER_AESGCM,
+	CIPHER_CHACHAPOLY,
 };
 
 struct sshcipher {
@@ -68,48 +89,29 @@ struct sshcipher {
 	u_int	key_len;
 	u_int	iv_len;		/* defaults to block_size */
 	u_int	auth_len;
-	u_int	flags;
-#define CFLAG_CBC		(1<<0)
-#define CFLAG_CHACHAPOLY	(1<<1)
-#define CFLAG_AESCTR		(1<<2)
-#define CFLAG_NONE		(1<<3)
-#define CFLAG_INTERNAL		CFLAG_NONE /* Don't use "none" for packets */
-#ifdef WITH_OPENSSL
-	const EVP_CIPHER	*(*evptype)(void);
-#else
-	void	*ignored;
-#endif
+	u_int	type;
 };
 
 static const struct sshcipher ciphers[] = {
-#ifdef WITH_OPENSSL
-#ifndef OPENSSL_NO_DES
-	{ "3des-cbc",		8, 24, 0, 0, CFLAG_CBC, EVP_des_ede3_cbc },
-#endif
-	{ "aes128-cbc",		16, 16, 0, 0, CFLAG_CBC, EVP_aes_128_cbc },
-	{ "aes192-cbc",		16, 24, 0, 0, CFLAG_CBC, EVP_aes_192_cbc },
-	{ "aes256-cbc",		16, 32, 0, 0, CFLAG_CBC, EVP_aes_256_cbc },
+#ifdef WITH_BEARSSL
+	{ "aes128-cbc",		16, 16, 16, 0, CIPHER_AESCBC },
+	{ "aes192-cbc",		16, 24, 16, 0, CIPHER_AESCBC },
+	{ "aes256-cbc",		16, 32, 16, 0, CIPHER_AESCBC },
 	{ "rijndael-cbc@lysator.liu.se",
-				16, 32, 0, 0, CFLAG_CBC, EVP_aes_256_cbc },
-	{ "aes128-ctr",		16, 16, 0, 0, 0, EVP_aes_128_ctr },
-	{ "aes192-ctr",		16, 24, 0, 0, 0, EVP_aes_192_ctr },
-	{ "aes256-ctr",		16, 32, 0, 0, 0, EVP_aes_256_ctr },
-# ifdef OPENSSL_HAVE_EVPGCM
+				16, 32, 16, 0, CIPHER_AESCBC },
 	{ "aes128-gcm@openssh.com",
-				16, 16, 12, 16, 0, EVP_aes_128_gcm },
+				16, 16, 12, 16, CIPHER_AESGCM },
 	{ "aes256-gcm@openssh.com",
-				16, 32, 12, 16, 0, EVP_aes_256_gcm },
-# endif /* OPENSSL_HAVE_EVPGCM */
-#else
-	{ "aes128-ctr",		16, 16, 0, 0, CFLAG_AESCTR, NULL },
-	{ "aes192-ctr",		16, 24, 0, 0, CFLAG_AESCTR, NULL },
-	{ "aes256-ctr",		16, 32, 0, 0, CFLAG_AESCTR, NULL },
+				16, 32, 12, 16, CIPHER_AESGCM },
 #endif
+	{ "aes128-ctr",		16, 16, 16, 0, CIPHER_AESCTR },
+	{ "aes192-ctr",		16, 24, 16, 0, CIPHER_AESCTR },
+	{ "aes256-ctr",		16, 32, 16, 0, CIPHER_AESCTR },
 	{ "chacha20-poly1305@openssh.com",
-				8, 64, 0, 16, CFLAG_CHACHAPOLY, NULL },
-	{ "none",		8, 0, 0, 0, CFLAG_NONE, NULL },
+				8, 64, 0, 16, CIPHER_CHACHAPOLY },
+	{ "none",		8, 0, 0, 0, CIPHER_NONE },
 
-	{ NULL,			0, 0, 0, 0, 0, NULL }
+	{ NULL,			0, 0, 0, 0, 0 }
 };
 
 /*--*/
@@ -123,7 +125,7 @@ cipher_alg_list(char sep, int auth_only)
 	const struct sshcipher *c;
 
 	for (c = ciphers; c->name != NULL; c++) {
-		if ((c->flags & CFLAG_INTERNAL) != 0)
+		if (c->type == CIPHER_NONE)
 			continue;
 		if (auth_only && c->auth_len == 0)
 			continue;
@@ -167,8 +169,6 @@ cipher_keylen(const struct sshcipher *c)
 u_int
 cipher_seclen(const struct sshcipher *c)
 {
-	if (strcmp("3des-cbc", c->name) == 0)
-		return 14;
 	return cipher_keylen(c);
 }
 
@@ -181,18 +181,13 @@ cipher_authlen(const struct sshcipher *c)
 u_int
 cipher_ivlen(const struct sshcipher *c)
 {
-	/*
-	 * Default is cipher block size, except for chacha20+poly1305 that
-	 * needs no IV. XXX make iv_len == -1 default?
-	 */
-	return (c->iv_len != 0 || (c->flags & CFLAG_CHACHAPOLY) != 0) ?
-	    c->iv_len : c->block_size;
+	return (c->iv_len);
 }
 
 u_int
 cipher_is_cbc(const struct sshcipher *c)
 {
-	return (c->flags & CFLAG_CBC) != 0;
+	return c->type == CIPHER_AESCBC;
 }
 
 u_int
@@ -226,7 +221,7 @@ ciphers_valid(const char *names)
 	for ((p = strsep(&cp, CIPHER_SEP)); p && *p != '\0';
 	    (p = strsep(&cp, CIPHER_SEP))) {
 		c = cipher_by_name(p);
-		if (c == NULL || (c->flags & CFLAG_INTERNAL) != 0) {
+		if (c == NULL || c->type == CIPHER_NONE) {
 			free(cipher_list);
 			return 0;
 		}
@@ -251,87 +246,72 @@ cipher_init(struct sshcipher_ctx **ccp, const struct sshcipher *cipher,
 {
 	struct sshcipher_ctx *cc = NULL;
 	int ret = SSH_ERR_INTERNAL_ERROR;
-#ifdef WITH_OPENSSL
-	const EVP_CIPHER *type;
-	int klen;
-#endif
 
 	*ccp = NULL;
 	if ((cc = calloc(sizeof(*cc), 1)) == NULL)
 		return SSH_ERR_ALLOC_FAIL;
 
-	cc->plaintext = (cipher->flags & CFLAG_NONE) != 0;
+	cc->plaintext = cipher->type == CIPHER_NONE;
 	cc->encrypt = do_encrypt;
 
-	if (keylen < cipher->key_len ||
-	    (iv != NULL && ivlen < cipher_ivlen(cipher))) {
+	if (keylen != cipher->key_len || ivlen != cipher_ivlen(cipher)) {
 		ret = SSH_ERR_INVALID_ARGUMENT;
 		goto out;
 	}
 
 	cc->cipher = cipher;
-	if ((cc->cipher->flags & CFLAG_CHACHAPOLY) != 0) {
-		cc->cp_ctx = chachapoly_new(key, keylen);
-		ret = cc->cp_ctx != NULL ? 0 : SSH_ERR_INVALID_ARGUMENT;
-		goto out;
-	}
-	if ((cc->cipher->flags & CFLAG_NONE) != 0) {
-		ret = 0;
-		goto out;
-	}
-#ifndef WITH_OPENSSL
-	if ((cc->cipher->flags & CFLAG_AESCTR) != 0) {
-		aesctr_keysetup(&cc->ac_ctx, key, 8 * keylen, 8 * ivlen);
-		aesctr_ivsetup(&cc->ac_ctx, iv);
-		ret = 0;
-		goto out;
-	}
-	ret = SSH_ERR_INVALID_ARGUMENT;
-	goto out;
-#else /* WITH_OPENSSL */
-	type = (*cipher->evptype)();
-	if ((cc->evp = EVP_CIPHER_CTX_new()) == NULL) {
-		ret = SSH_ERR_ALLOC_FAIL;
-		goto out;
-	}
-	if (EVP_CipherInit(cc->evp, type, NULL, (u_char *)iv,
-	    (do_encrypt == CIPHER_ENCRYPT)) == 0) {
-		ret = SSH_ERR_LIBCRYPTO_ERROR;
-		goto out;
-	}
-	if (cipher_authlen(cipher) &&
-	    !EVP_CIPHER_CTX_ctrl(cc->evp, EVP_CTRL_GCM_SET_IV_FIXED,
-	    -1, (u_char *)iv)) {
-		ret = SSH_ERR_LIBCRYPTO_ERROR;
-		goto out;
-	}
-	klen = EVP_CIPHER_CTX_key_length(cc->evp);
-	if (klen > 0 && keylen != (u_int)klen) {
-		if (EVP_CIPHER_CTX_set_key_length(cc->evp, keylen) == 0) {
-			ret = SSH_ERR_LIBCRYPTO_ERROR;
+	switch (cc->cipher->type) {
+	case CIPHER_NONE:
+		break;
+	case CIPHER_CHACHAPOLY:
+		if ((cc->cp_ctx = chachapoly_new(key, keylen)) == NULL) {
+			ret = SSH_ERR_INVALID_ARGUMENT;
 			goto out;
 		}
-	}
-	if (EVP_CipherInit(cc->evp, NULL, (u_char *)key, NULL, -1) == 0) {
-		ret = SSH_ERR_LIBCRYPTO_ERROR;
+		break;
+#ifdef WITH_BEARSSL
+	case CIPHER_AESCTR:
+		memcpy(cc->iv, iv, 16);
+		br_aes_ct64_ctr_init(&cc->keys.ctr, key, keylen);
+		break;
+	case CIPHER_AESCBC:
+		memcpy(cc->iv, iv, 16);
+		if (do_encrypt)
+			br_aes_ct64_cbcenc_init(&cc->keys.cbcenc, key, keylen);
+		else
+			br_aes_ct64_cbcdec_init(&cc->keys.cbcdec, key, keylen);
+		break;
+	case CIPHER_AESGCM:
+		memcpy(cc->iv, iv, 12);
+		br_aes_ct64_ctr_init(&cc->keys.ctr, key, keylen);
+		br_gcm_init(&cc->gcm, &cc->keys.ctr.vtable, br_ghash_ctmul64);
+		break;
+#else
+	case CIPHER_AESCTR:
+		aesctr_keysetup(&cc->ac_ctx, key, 8 * keylen, 8 * ivlen);
+		aesctr_ivsetup(&cc->ac_ctx, iv);
+		break;
+#endif
+	default:
+		ret = SSH_ERR_INVALID_ARGUMENT;
 		goto out;
 	}
+	*ccp = cc;
+	cc = NULL;
 	ret = 0;
-#endif /* WITH_OPENSSL */
  out:
-	if (ret == 0) {
-		/* success */
-		*ccp = cc;
-	} else {
-		if (cc != NULL) {
-#ifdef WITH_OPENSSL
-			EVP_CIPHER_CTX_free(cc->evp);
-#endif /* WITH_OPENSSL */
-			freezero(cc, sizeof(*cc));
-		}
-	}
+	freezero(cc, sizeof(*cc));
 	return ret;
 }
+
+#ifdef WITH_BEARSSL
+static inline void
+inc_iv(u_char *iv, size_t len)
+{
+	while (len-- > 0 && ++iv[len] == 0)
+		;
+}
+#endif
 
 /*
  * cipher_crypt() operates as following:
@@ -347,62 +327,73 @@ int
 cipher_crypt(struct sshcipher_ctx *cc, u_int seqnr, u_char *dest,
    const u_char *src, u_int len, u_int aadlen, u_int authlen)
 {
-	if ((cc->cipher->flags & CFLAG_CHACHAPOLY) != 0) {
+	u_int32_t ctr;
+	u_int off;
+
+	if (authlen != cipher_authlen(cc->cipher) ||
+	    len % cc->cipher->block_size != 0)
+		return SSH_ERR_INVALID_ARGUMENT;
+
+	switch (cc->cipher->type) {
+	case CIPHER_NONE:
+		memcpy(dest, src, aadlen + len);
+		break;
+	case CIPHER_CHACHAPOLY:
 		return chachapoly_crypt(cc->cp_ctx, seqnr, dest, src,
 		    len, aadlen, authlen, cc->encrypt);
-	}
-	if ((cc->cipher->flags & CFLAG_NONE) != 0) {
+#ifdef WITH_BEARSSL
+	case CIPHER_AESCTR:
 		memcpy(dest, src, aadlen + len);
-		return 0;
-	}
-#ifndef WITH_OPENSSL
-	if ((cc->cipher->flags & CFLAG_AESCTR) != 0) {
+		ctr = PEEK_U32(cc->iv + 12);
+		off = -ctr < len / 16 ? -ctr * 16 : len;
+		ctr = br_aes_ct64_ctr_run(&cc->keys.ctr, cc->iv, ctr,
+		    dest + aadlen, off);
+		/* If the counter rolled over (possible since the
+		 * initial value comes from a hash), increment the
+		 * IV, then process the rest of the message. */
+		if (ctr == 0) {
+			inc_iv(cc->iv, 12);
+			ctr = br_aes_ct64_ctr_run(&cc->keys.ctr, cc->iv, ctr,
+			   dest + aadlen + off, len - off);
+		}
+		POKE_U32(cc->iv + 12, ctr);
+		break;
+	case CIPHER_AESCBC:
+		memcpy(dest, src, aadlen + len);
+		if (cc->encrypt) {
+			br_aes_ct64_cbcenc_run(&cc->keys.cbcenc, cc->iv,
+			    dest + aadlen, len);
+		} else {
+			br_aes_ct64_cbcdec_run(&cc->keys.cbcdec, cc->iv,
+			    dest + aadlen, len);
+		}
+		break;
+	case CIPHER_AESGCM:
+		memcpy(dest, src, aadlen + len);
+		br_gcm_reset(&cc->gcm, cc->iv, 12);
+		inc_iv(cc->iv + 4, 8);
+		br_gcm_aad_inject(&cc->gcm, dest, aadlen);
+		br_gcm_flip(&cc->gcm);
+		br_gcm_run(&cc->gcm, cc->encrypt, dest + aadlen, len);
+		if (cc->encrypt) {
+			br_gcm_get_tag(&cc->gcm, dest + aadlen + len);
+		} else if (br_gcm_check_tag(&cc->gcm,
+		    src + aadlen + len) != 1) {
+			return SSH_ERR_MAC_INVALID;
+		}
+		break;
+#else
+	case CIPHER_AESCTR:
 		if (aadlen)
 			memcpy(dest, src, aadlen);
 		aesctr_encrypt_bytes(&cc->ac_ctx, src + aadlen,
 		    dest + aadlen, len);
-		return 0;
-	}
-	return SSH_ERR_INVALID_ARGUMENT;
-#else
-	if (authlen) {
-		u_char lastiv[1];
-
-		if (authlen != cipher_authlen(cc->cipher))
-			return SSH_ERR_INVALID_ARGUMENT;
-		/* increment IV */
-		if (!EVP_CIPHER_CTX_ctrl(cc->evp, EVP_CTRL_GCM_IV_GEN,
-		    1, lastiv))
-			return SSH_ERR_LIBCRYPTO_ERROR;
-		/* set tag on decyption */
-		if (!cc->encrypt &&
-		    !EVP_CIPHER_CTX_ctrl(cc->evp, EVP_CTRL_GCM_SET_TAG,
-		    authlen, (u_char *)src + aadlen + len))
-			return SSH_ERR_LIBCRYPTO_ERROR;
-	}
-	if (aadlen) {
-		if (authlen &&
-		    EVP_Cipher(cc->evp, NULL, (u_char *)src, aadlen) < 0)
-			return SSH_ERR_LIBCRYPTO_ERROR;
-		memcpy(dest, src, aadlen);
-	}
-	if (len % cc->cipher->block_size)
+		break;
+#endif
+	default:
 		return SSH_ERR_INVALID_ARGUMENT;
-	if (EVP_Cipher(cc->evp, dest + aadlen, (u_char *)src + aadlen,
-	    len) < 0)
-		return SSH_ERR_LIBCRYPTO_ERROR;
-	if (authlen) {
-		/* compute tag (on encrypt) or verify tag (on decrypt) */
-		if (EVP_Cipher(cc->evp, NULL, NULL, 0) < 0)
-			return cc->encrypt ?
-			    SSH_ERR_LIBCRYPTO_ERROR : SSH_ERR_MAC_INVALID;
-		if (cc->encrypt &&
-		    !EVP_CIPHER_CTX_ctrl(cc->evp, EVP_CTRL_GCM_GET_TAG,
-		    authlen, dest + aadlen + len))
-			return SSH_ERR_LIBCRYPTO_ERROR;
 	}
 	return 0;
-#endif
 }
 
 /* Extract the packet length, including any decryption necessary beforehand */
@@ -410,7 +401,7 @@ int
 cipher_get_length(struct sshcipher_ctx *cc, u_int *plenp, u_int seqnr,
     const u_char *cp, u_int len)
 {
-	if ((cc->cipher->flags & CFLAG_CHACHAPOLY) != 0)
+	if (cc->cipher->type == CIPHER_CHACHAPOLY)
 		return chachapoly_get_length(cc->cp_ctx, plenp, seqnr,
 		    cp, len);
 	if (len < 4)
@@ -424,15 +415,10 @@ cipher_free(struct sshcipher_ctx *cc)
 {
 	if (cc == NULL)
 		return;
-	if ((cc->cipher->flags & CFLAG_CHACHAPOLY) != 0) {
+	if (cc->cipher->type == CIPHER_CHACHAPOLY) {
 		chachapoly_free(cc->cp_ctx);
 		cc->cp_ctx = NULL;
-	} else if ((cc->cipher->flags & CFLAG_AESCTR) != 0)
-		explicit_bzero(&cc->ac_ctx, sizeof(cc->ac_ctx));
-#ifdef WITH_OPENSSL
-	EVP_CIPHER_CTX_free(cc->evp);
-	cc->evp = NULL;
-#endif
+	}
 	freezero(cc, sizeof(*cc));
 }
 
@@ -444,44 +430,26 @@ cipher_free(struct sshcipher_ctx *cc)
 int
 cipher_get_keyiv(struct sshcipher_ctx *cc, u_char *iv, size_t len)
 {
-#ifdef WITH_OPENSSL
-	const struct sshcipher *c = cc->cipher;
-	int evplen;
-#endif
 
-	if ((cc->cipher->flags & CFLAG_CHACHAPOLY) != 0) {
-		if (len != 0)
-			return SSH_ERR_INVALID_ARGUMENT;
-		return 0;
-	}
-	if ((cc->cipher->flags & CFLAG_AESCTR) != 0) {
-		if (len != sizeof(cc->ac_ctx.ctr))
-			return SSH_ERR_INVALID_ARGUMENT;
-		memcpy(iv, cc->ac_ctx.ctr, len);
-		return 0;
-	}
-	if ((cc->cipher->flags & CFLAG_NONE) != 0)
-		return 0;
-
-#ifdef WITH_OPENSSL
-	evplen = EVP_CIPHER_CTX_iv_length(cc->evp);
-	if (evplen == 0)
-		return 0;
-	else if (evplen < 0)
-		return SSH_ERR_LIBCRYPTO_ERROR;
-	if ((size_t)evplen != len)
+	if (len != cipher_ivlen(cc->cipher))
 		return SSH_ERR_INVALID_ARGUMENT;
-#ifndef OPENSSL_HAVE_EVPCTR
-	if (c->evptype == evp_aes_128_ctr)
-		ssh_aes_ctr_iv(cc->evp, 0, iv, len);
-	else
+
+	switch (cc->cipher->type) {
+#ifdef WITH_BEARSSL
+	case CIPHER_AESCTR:
+	case CIPHER_AESCBC:
+	case CIPHER_AESGCM:
+		memcpy(iv, cc->iv, len);
+		break;
+#else
+	case CIPHER_AESCTR:
+		memcpy(iv, cc->ac_ctx.ctr, len);
+		break;
 #endif
-	if (cipher_authlen(c)) {
-		if (!EVP_CIPHER_CTX_ctrl(cc->evp, EVP_CTRL_GCM_IV_GEN,
-		   len, iv))
-		       return SSH_ERR_LIBCRYPTO_ERROR;
-	} else if (!EVP_CIPHER_CTX_get_iv(cc->evp, iv, len))
-	       return SSH_ERR_LIBCRYPTO_ERROR;
-#endif
+	case CIPHER_CHACHAPOLY:
+		break;
+	default:
+		return SSH_ERR_INVALID_ARGUMENT;
+	}
 	return 0;
 }

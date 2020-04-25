@@ -20,7 +20,7 @@
 #include <sys/types.h>
 #include <string.h>
 
-#ifndef WITH_OPENSSL
+#ifndef WITH_BEARSSL
 
 #include "cipher-aesctr.h"
 
@@ -80,4 +80,4 @@ aesctr_encrypt_bytes(aesctr_ctx *x,const u8 *m,u8 *c,u32 bytes)
 		n = (n + 1) % AES_BLOCK_SIZE;
 	}
 }
-#endif /* !WITH_OPENSSL */
+#endif /* !WITH_BEARSSL */
