@@ -91,6 +91,10 @@ cp rsa_1 rsa_n
 cp dsa_1 dsa_n
 cp ecdsa_1 ecdsa_n
 
+ssh-keygen -pf rsa_n -N ""
+ssh-keygen -pf dsa_n -N ""
+ssh-keygen -pf ecdsa_n -N ""
+
 cp rsa_1 rsa_1_pw
 cp dsa_1 dsa_1_pw
 cp ecdsa_1 ecdsa_1_pw
