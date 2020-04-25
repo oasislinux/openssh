@@ -3928,7 +3928,7 @@ sshkey_private_to_blob_pem_pkcs8(struct sshkey *key, struct sshbuf *buf,
     int format, const char *_passphrase, const char *comment)
 {
 	int was_shielded = sshkey_is_shielded(key);
-	int success, r;
+	int r;
 	int blen, dlen, len = strlen(_passphrase);
 	u_char *passphrase = (len > 0) ? (u_char *)_passphrase : NULL;
 	u_char *der = NULL, *pem;
