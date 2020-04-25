@@ -525,6 +525,12 @@ do_convert_private_ssh2(struct sshbuf *b)
 		    rsa_iqlen + rsa_plen + rsa_qlen > sizeof(key->rsa_sk->data))
 			fatal("%s: RSA key is too large", __func__);
 
+		key->rsa_pk->key.n = key->rsa_pk->key.e + rsa_elen;
+		key->rsa_pk->key.nlen = rsa_nlen;
+		memcpy(key->rsa_pk->key.n, rsa_n, rsa_nlen);
+
+		key->rsa_sk->key.n_bitlen = sshkey_size(key);
+
 		key->rsa_sk->dlen = rsa_dlen;
 		memcpy(key->rsa_sk->d, rsa_d, rsa_dlen);
 
