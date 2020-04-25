@@ -3982,10 +3982,10 @@ sshkey_private_to_blob_pem_pkcs8(struct sshkey *key, struct sshbuf *buf,
 		r = SSH_ERR_LIBCRYPTO_ERROR;
 		goto out;
 	}
-	blen = br_pem_encode(NULL, der, dlen, pem_name, 0);
+	blen = br_pem_encode(NULL, der, dlen, pem_name, BR_PEM_LINE64);
 	if ((r = sshbuf_reserve(buf, blen, &pem)) != 0)
 		goto out;
-	br_pem_encode(pem, der, dlen, pem_name, 0);
+	br_pem_encode(pem, der, dlen, pem_name, BR_PEM_LINE64);
 	r = 0;
  out:
 	if (was_shielded)
