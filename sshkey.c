@@ -4122,7 +4122,8 @@ sshkey_parse_private_pem_fileblob(struct sshbuf *blob, int type,
 			goto out;
 		}
 		rsa = br_skey_decoder_get_rsa(&key_ctx);
-		if (rsa->n_bitlen < SSH_RSA_MINIMUM_MODULUS_SIZE) {
+		if (rsa->n_bitlen < SSH_RSA_MINIMUM_MODULUS_SIZE ||
+		    rsa->n_bitlen > SSH_RSA_MAXIMUM_MODULUS_SIZE) {
 			r = SSH_ERR_KEY_LENGTH;
 			goto out;
 		}
@@ -4136,7 +4137,7 @@ sshkey_parse_private_pem_fileblob(struct sshbuf *blob, int type,
 		prv->rsa_pk->key.n = prv->rsa_pk->data;
 		if ((prv->rsa_pk->key.nlen = compute_modulus(prv->rsa_pk->key.n,
 		    rsa)) == 0 ||
-		    (pubexp = br_rsa_compute_pubexp_get_default()(rsa) == 0) ||
+		    (pubexp = br_rsa_compute_pubexp_get_default()(rsa)) == 0 ||
 		    (prv->rsa_sk->dlen = compute_privexp(NULL, rsa,
 		    pubexp)) == 0) {
 			r = SSH_ERR_LIBCRYPTO_ERROR;
@@ -4157,7 +4158,9 @@ sshkey_parse_private_pem_fileblob(struct sshbuf *blob, int type,
 		}
 
 		prv->rsa_pk->key.e = prv->rsa_pk->key.n + prv->rsa_pk->key.nlen;
+		prv->rsa_pk->key.elen = 4;
 		POKE_U32(prv->rsa_pk->key.e, pubexp);
+		prv->rsa_sk->key.n_bitlen = rsa->n_bitlen;
 		prv->rsa_sk->key.p = prv->rsa_sk->data;
 		prv->rsa_sk->key.plen = rsa->plen;
 		memcpy(prv->rsa_sk->key.p, rsa->p, rsa->plen);
