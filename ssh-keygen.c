@@ -470,9 +470,8 @@ do_convert_private_ssh2(struct sshbuf *b)
 		fatal("%s: buffer error: %s", __func__, ssh_err(r));
 
 	if (magic != SSH_COM_PRIVATE_KEY_MAGIC) {
-		error("bad magic 0x%x != 0x%x", magic,
+		fatal("bad magic 0x%x != 0x%x", magic,
 		    SSH_COM_PRIVATE_KEY_MAGIC);
-		return NULL;
 	}
 	if ((r = sshbuf_get_u32(b, &i1)) != 0 ||
 	    (r = sshbuf_get_cstring(b, &type, NULL)) != 0 ||
@@ -482,19 +481,14 @@ do_convert_private_ssh2(struct sshbuf *b)
 	    (r = sshbuf_get_u32(b, &i4)) != 0)
 		fatal("%s: buffer error: %s", __func__, ssh_err(r));
 	debug("ignore (%d %d %d %d)", i1, i2, i3, i4);
-	if (strcmp(cipher, "none") != 0) {
-		error("unsupported cipher %s", cipher);
-		free(cipher);
-		free(type);
-		return NULL;
-	}
+	if (strcmp(cipher, "none") != 0)
+		fatal("unsupported cipher %s", cipher);
 	free(cipher);
 
 	if (strstr(type, "rsa")) {
 		ktype = KEY_RSA;
 	} else {
-		free(type);
-		return NULL;
+		fatal("unsupported key type %s", type);
 	}
 	if ((key = sshkey_new(ktype)) == NULL)
 		fatal("sshkey_new failed");
@@ -561,9 +555,7 @@ do_convert_private_ssh2(struct sshbuf *b)
 	    NULL, NULL, 0) != 0 ||
 	    sshkey_verify(key, sig, slen, data, sizeof(data),
 	    NULL, 0, NULL) != 0) {
-		sshkey_free(key);
-		free(sig);
-		return NULL;
+		fatal("%s: converted key is not valid", __func__);
 	}
 	free(sig);
 	return key;
