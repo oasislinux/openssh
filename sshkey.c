@@ -4160,6 +4160,12 @@ sshkey_parse_private_pem_fileblob(struct sshbuf *blob, int type,
 		prv->rsa_pk->key.e = prv->rsa_pk->key.n + prv->rsa_pk->key.nlen;
 		prv->rsa_pk->key.elen = 4;
 		POKE_U32(prv->rsa_pk->key.e, pubexp);
+		/* Trim leading zeros */
+		while (prv->rsa_pk->key.elen > 0 && prv->rsa_pk->key.e[0] == 0) {
+			--prv->rsa_pk->key.elen;
+			++prv->rsa_pk->key.e;
+		}
+
 		prv->rsa_sk->key.n_bitlen = rsa->n_bitlen;
 		prv->rsa_sk->key.p = prv->rsa_sk->data;
 		prv->rsa_sk->key.plen = rsa->plen;
