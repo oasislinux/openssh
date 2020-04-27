@@ -34,9 +34,12 @@ ecdsa_params() {
 	openssl ec -noout -text -in $_in | \
 	    awk '/^pub:/,/^ASN1 OID:/' | #\
 	    grep -v '^[a-zA-Z]' | tr -d ' \n:' > ${_outbase}.pub
-	openssl ec -noout -text -in $_in | \
-	    grep "ASN1 OID:" | \
-	    sed 's/.*: //;s/ *$//' | tr -d '\n' > ${_outbase}.curve
+	case $(brssl skey -text $_in | sed -n '/^EC key/{s/.*: //;s/) *//;p}') in
+	secp256r1) printf nistp256 ;;
+	secp384r1) printf nistp384 ;;
+	secp521r1) printf nistp521 ;;
+	*) exit 1
+	esac > ${_outbase}.curve
 	for x in priv pub curve ; do
 		echo "" >> ${_outbase}.$x
 		echo ============ ${_outbase}.$x

@@ -265,7 +265,9 @@ sshkey_file_tests(void)
 	ASSERT_PTR_NE(k1, NULL);
 	buf = load_text_file("ecdsa_1.param.curve");
 	ASSERT_STRING_EQ((const char *)sshbuf_ptr(buf),
-	    OBJ_nid2sn(k1->ecdsa_nid));
+	    sshkey_curve_nid_to_name(k1->ecdsa_nid));
+	ASSERT_INT_EQ(sshkey_curve_name_to_nid((const char *)sshbuf_ptr(buf)),
+	    k1->ecdsa_nid);
 	sshbuf_free(buf);
 	a = load_bignum("ecdsa_1.param.priv");
 	b = load_bignum("ecdsa_1.param.pub");
