@@ -40,6 +40,7 @@
 #include "digest.h"
 #define SSHKEY_INTERNAL
 #include "sshkey.h"
+#include "misc.h"
 
 /* ARGSUSED */
 int
@@ -168,15 +169,11 @@ ssh_ecdsa_verify(const struct sshkey *key,
 		ret = SSH_ERR_INVALID_FORMAT;
 		goto out;
 	}
-	memcpy(sig, sig_r, sig_rlen);
-	if (sig_rlen < sig_slen) {
-		memmove(sig, sig + (sig_slen - sig_rlen), sig_rlen);
-		memset(sig, 0, sig_slen - sig_rlen);
-		sig_rlen = sig_slen;
-	}
-	memset(sig + sig_rlen, 0, sig_rlen - sig_slen);
-	memcpy(sig + sig_rlen + (sig_rlen - sig_slen), sig_s, sig_slen);
-	slen = sig_rlen * 2;
+	slen = MAXIMUM(sig_rlen, sig_slen) * 2;
+	memset(sig, 0, slen / 2 - sig_rlen);
+	memcpy(sig + (slen / 2 - sig_rlen), sig_r, sig_rlen);
+	memset(sig + slen / 2, 0, slen / 2 - sig_slen);
+	memcpy(sig + (slen - sig_slen), sig_s, sig_slen);
 
 	if (sshbuf_len(sigbuf) != 0) {
 		ret = SSH_ERR_UNEXPECTED_TRAILING_DATA;
