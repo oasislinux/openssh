@@ -16,7 +16,7 @@
 
 #include "includes.h"
 
-#ifndef WITH_OPENSSL
+#ifndef WITH_BEARSSL
 
 #include <sys/types.h>
 #include <string.h>
@@ -179,4 +179,4 @@ SHA1Final(u_int8_t digest[SHA1_DIGEST_LENGTH], SHA1_CTX *context)
 	explicit_bzero(context, sizeof(*context));
 }
 DEF_WEAK(SHA1Final);
-#endif /* !WITH_OPENSSL */
+#endif /* !WITH_BEARSSL */
