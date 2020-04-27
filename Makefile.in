@@ -628,7 +628,7 @@ regress/misc/kexfuzz/kexfuzz$(EXEEXT): ${MISC_KEX_FUZZ_OBJS} libssh.a
 SK_DUMMY_OBJS=\
 	regress/misc/sk-dummy/sk-dummy.lo \
 	regress/misc/sk-dummy/fatal.lo \
-	ed25519.lo hash.lo ge25519.lo fe25519.lo sc25519.lo verify.lo
+	ed25519.lo hash.lo ge25519.lo fe25519.lo sc25519.lo verify.lo entropy.lo
 
 .c.lo: Makefile.in config.h
 	$(CC) $(CFLAGS_NOPIE) $(PICFLAG) $(CPPFLAGS) -c $< -o $@

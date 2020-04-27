@@ -28,24 +28,7 @@
 #include "crypto_api.h"
 #include "sk-api.h"
 
-#include <openssl/opensslv.h>
-#include <openssl/crypto.h>
-#include <openssl/evp.h>
-#include <openssl/bn.h>
-#include <openssl/ec.h>
-#include <openssl/ecdsa.h>
-#include <openssl/pem.h>
-
 /* #define SK_DEBUG 1 */
-
-/* Compatibility with OpenSSH 1.0.x */
-#if (OPENSSL_VERSION_NUMBER < 0x10100000L)
-#define ECDSA_SIG_get0(sig, pr, ps) \
-	do { \
-		(*pr) = sig->r; \
-		(*ps) = sig->s; \
-	} while (0)
-#endif
 
 #if SSH_SK_VERSION_MAJOR != 0x00040000
 # error SK API has changed, sk-dummy.c needs an update
@@ -80,37 +63,29 @@ sk_api_version(void)
 static int
 pack_key_ecdsa(struct sk_enroll_response *response)
 {
-#ifdef OPENSSL_HAS_ECC
-	EC_KEY *key = NULL;
-	const EC_GROUP *g;
-	const EC_POINT *q;
+#ifdef WITH_BEARSSL
+	br_ec_private_key sk;
+	br_ec_public_key pk;
+	const br_prng_class *rng = &arc4random_prng;
+	unsigned char skbuf[BR_EC_KBUF_PRIV_MAX_SIZE];
+	unsigned char pkbuf[BR_EC_KBUF_PUB_MAX_SIZE];
 	int ret = -1;
-	long privlen;
-	BIO *bio = NULL;
-	char *privptr;
 
 	response->public_key = NULL;
 	response->public_key_len = 0;
 	response->key_handle = NULL;
 	response->key_handle_len = 0;
 
-	if ((key = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1)) == NULL) {
-		skdebug(__func__, "EC_KEY_new_by_curve_name");
+	if (br_ec_keygen(&rng, br_ec_get_default(), &sk, skbuf,
+	    BR_EC_secp256r1) == 0) {
+		skdebug(__func__, "br_ec_keygen");
 		goto out;
 	}
-	if (EC_KEY_generate_key(key) != 1) {
-		skdebug(__func__, "EC_KEY_generate_key");
+	if (br_ec_compute_pub(br_ec_get_default(), &pk, pkbuf, &sk) == 0) {
+		skdebug(__func__, "br_ec_compute_pub");
 		goto out;
 	}
-	EC_KEY_set_asn1_flag(key, OPENSSL_EC_NAMED_CURVE);
-	if ((bio = BIO_new(BIO_s_mem())) == NULL ||
-	    (g = EC_KEY_get0_group(key)) == NULL ||
-	    (q = EC_KEY_get0_public_key(key)) == NULL) {
-		skdebug(__func__, "couldn't get key parameters");
-		goto out;
-	}
-	response->public_key_len = EC_POINT_point2oct(g, q,
-	    POINT_CONVERSION_UNCOMPRESSED, NULL, 0, NULL);
+	response->public_key_len = pk.qlen;
 	if (response->public_key_len == 0 || response->public_key_len > 2048) {
 		skdebug(__func__, "bad pubkey length %zu",
 		    response->public_key_len);
@@ -120,26 +95,15 @@ pack_key_ecdsa(struct sk_enroll_response *response)
 		skdebug(__func__, "malloc pubkey failed");
 		goto out;
 	}
-	if (EC_POINT_point2oct(g, q, POINT_CONVERSION_UNCOMPRESSED,
-	    response->public_key, response->public_key_len, NULL) == 0) {
-		skdebug(__func__, "EC_POINT_point2oct failed");
-		goto out;
-	}
-	/* Key handle contains PEM encoded private key */
-	if (!PEM_write_bio_ECPrivateKey(bio, key, NULL, NULL, 0, NULL, NULL)) {
-		skdebug(__func__, "PEM_write_bio_ECPrivateKey failed");
-		goto out;
-	}
-	if ((privlen = BIO_get_mem_data(bio, &privptr)) <= 0) {
-		skdebug(__func__, "BIO_get_mem_data failed");
-		goto out;
-	}
-	if ((response->key_handle = malloc(privlen)) == NULL) {
+	memcpy(response->public_key, pk.q, pk.qlen);
+	/* Key handle contains serialized private key */
+	response->key_handle_len = 1 + sk.xlen;
+	if ((response->key_handle = malloc(response->key_handle_len)) == NULL) {
 		skdebug(__func__, "malloc key_handle failed");
 		goto out;
 	}
-	response->key_handle_len = (size_t)privlen;
-	memcpy(response->key_handle, privptr, response->key_handle_len);
+	response->key_handle[0] = sk.curve;
+	memcpy(response->key_handle + 1, sk.x, sk.xlen);
 	/* success */
 	ret = 0;
  out:
@@ -157,8 +121,6 @@ pack_key_ecdsa(struct sk_enroll_response *response)
 			response->key_handle = NULL;
 		}
 	}
-	BIO_free(bio);
-	EC_KEY_free(key);
 	return ret;
 #else
 	return -1;
@@ -299,36 +261,24 @@ sig_ecdsa(const uint8_t *message, size_t message_len,
     const uint8_t *key_handle, size_t key_handle_len,
     struct sk_sign_response *response)
 {
-#ifdef OPENSSL_HAS_ECC
-	ECDSA_SIG *sig = NULL;
-	const BIGNUM *sig_r, *sig_s;
+#ifdef WITH_BEARSSL
 	int ret = -1;
-	BIO *bio = NULL;
-	EVP_PKEY *pk = NULL;
-	EC_KEY *ec = NULL;
-	SHA256_CTX ctx;
-	uint8_t	apphash[SHA256_DIGEST_LENGTH];
-	uint8_t	sighash[SHA256_DIGEST_LENGTH];
+	br_sha256_context ctx;
+	br_ec_private_key sk;
+	uint8_t sig[132];
+	size_t siglen;
+	uint8_t	apphash[br_sha256_SIZE];
+	uint8_t	sighash[br_sha256_SIZE];
 	uint8_t countbuf[4];
 
-	/* Decode EC_KEY from key handle */
-	if ((bio = BIO_new(BIO_s_mem())) == NULL ||
-	    BIO_write(bio, key_handle, key_handle_len) != (int)key_handle_len) {
-		skdebug(__func__, "BIO setup failed");
+	/* Decode private key from key handle */
+	if (key_handle_len == 0) {
+		skdebug(__func__, "invalid key handle");
 		goto out;
 	}
-	if ((pk = PEM_read_bio_PrivateKey(bio, NULL, NULL, "")) == NULL) {
-		skdebug(__func__, "PEM_read_bio_PrivateKey failed");
-		goto out;
-	}
-	if (EVP_PKEY_base_id(pk) != EVP_PKEY_EC) {
-		skdebug(__func__, "Not an EC key: %d", EVP_PKEY_base_id(pk));
-		goto out;
-	}
-	if ((ec = EVP_PKEY_get1_EC_KEY(pk)) == NULL) {
-		skdebug(__func__, "EVP_PKEY_get1_EC_KEY failed");
-		goto out;
-	}
+	sk.curve = key_handle[0];
+	sk.x = (unsigned char *)key_handle + 1;
+	sk.xlen = key_handle_len - 1;
 	/* Expect message to be pre-hashed */
 	if (message_len != SHA256_DIGEST_LENGTH) {
 		skdebug(__func__, "bad message len %zu", message_len);
@@ -336,9 +286,9 @@ sig_ecdsa(const uint8_t *message, size_t message_len,
 	}
 	/* Prepare data to be signed */
 	dump("message", message, message_len);
-	SHA256_Init(&ctx);
-	SHA256_Update(&ctx, application, strlen(application));
-	SHA256_Final(apphash, &ctx);
+	br_sha256_init(&ctx);
+	br_sha256_update(&ctx, application, strlen(application));
+	br_sha256_out(&ctx, apphash);
 	dump("apphash", apphash, sizeof(apphash));
 	countbuf[0] = (counter >> 24) & 0xff;
 	countbuf[1] = (counter >> 16) & 0xff;
@@ -346,43 +296,41 @@ sig_ecdsa(const uint8_t *message, size_t message_len,
 	countbuf[3] = counter & 0xff;
 	dump("countbuf", countbuf, sizeof(countbuf));
 	dump("flags", &flags, sizeof(flags));
-	SHA256_Init(&ctx);
-	SHA256_Update(&ctx, apphash, sizeof(apphash));
-	SHA256_Update(&ctx, &flags, sizeof(flags));
-	SHA256_Update(&ctx, countbuf, sizeof(countbuf));
-	SHA256_Update(&ctx, message, message_len);
-	SHA256_Final(sighash, &ctx);
+	br_sha256_init(&ctx);
+	br_sha256_update(&ctx, apphash, sizeof(apphash));
+	br_sha256_update(&ctx, &flags, sizeof(flags));
+	br_sha256_update(&ctx, countbuf, sizeof(countbuf));
+	br_sha256_update(&ctx, message, message_len);
+	br_sha256_out(&ctx, sighash);
 	dump("sighash", sighash, sizeof(sighash));
 	/* create and encode signature */
-	if ((sig = ECDSA_do_sign(sighash, sizeof(sighash), ec)) == NULL) {
-		skdebug(__func__, "ECDSA_do_sign failed");
+	if ((siglen = br_ecdsa_sign_raw_get_default()(br_ec_get_default(),
+	    &br_sha256_vtable, sighash, &sk, sig)) == 0 ||
+	    siglen % 2 != 0) {
+		skdebug(__func__, "br_ecdsa_sign_raw failed");
 		goto out;
 	}
-	ECDSA_SIG_get0(sig, &sig_r, &sig_s);
-	response->sig_r_len = BN_num_bytes(sig_r);
-	response->sig_s_len = BN_num_bytes(sig_s);
+	response->sig_r_len = siglen / 2;
+	response->sig_s_len = siglen / 2;
 	if ((response->sig_r = calloc(1, response->sig_r_len)) == NULL ||
 	    (response->sig_s = calloc(1, response->sig_s_len)) == NULL) {
 		skdebug(__func__, "calloc signature failed");
 		goto out;
 	}
-	BN_bn2bin(sig_r, response->sig_r);
-	BN_bn2bin(sig_s, response->sig_s);
+	memcpy(response->sig_r, sig, siglen / 2);
+	memcpy(response->sig_s, sig + siglen / 2, siglen / 2);
 	ret = 0;
  out:
 	explicit_bzero(&ctx, sizeof(ctx));
 	explicit_bzero(&apphash, sizeof(apphash));
 	explicit_bzero(&sighash, sizeof(sighash));
-	ECDSA_SIG_free(sig);
+	explicit_bzero(sig, sizeof(sig));
 	if (ret != 0) {
 		free(response->sig_r);
 		free(response->sig_s);
 		response->sig_r = NULL;
 		response->sig_s = NULL;
 	}
-	BIO_free(bio);
-	EC_KEY_free(ec);
-	EVP_PKEY_free(pk);
 	return ret;
 #else
 	return -1;
@@ -397,10 +345,10 @@ sig_ed25519(const uint8_t *message, size_t message_len,
 {
 	size_t o;
 	int ret = -1;
-	SHA256_CTX ctx;
-	uint8_t	apphash[SHA256_DIGEST_LENGTH];
+	br_sha256_context ctx;
+	uint8_t	apphash[br_sha256_SIZE];
 	uint8_t signbuf[sizeof(apphash) + sizeof(flags) +
-	    sizeof(counter) + SHA256_DIGEST_LENGTH];
+	    sizeof(counter) + br_sha256_SIZE];
 	uint8_t sig[crypto_sign_ed25519_BYTES + sizeof(signbuf)];
 	unsigned long long smlen;
 
@@ -415,9 +363,9 @@ sig_ed25519(const uint8_t *message, size_t message_len,
 	}
 	/* Prepare data to be signed */
 	dump("message", message, message_len);
-	SHA256_Init(&ctx);
-	SHA256_Update(&ctx, application, strlen(application));
-	SHA256_Final(apphash, &ctx);
+	br_sha256_init(&ctx);
+	br_sha256_update(&ctx, application, strlen(application));
+	br_sha256_out(&ctx, apphash);
 	dump("apphash", apphash, sizeof(apphash));
 
 	memcpy(signbuf, apphash, sizeof(apphash));
