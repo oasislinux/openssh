@@ -35,11 +35,6 @@
 #include <unistd.h>
 #include <signal.h>
 
-#ifdef WITH_OPENSSL
-#include <openssl/bn.h>
-#include <openssl/err.h>
-#endif
-
 #if defined(HAVE_STRNVIS) && defined(HAVE_VIS_H) && !defined(BROKEN_STRNVIS)
 # include <vis.h>
 #endif
@@ -129,9 +124,6 @@ main(int argc, char **argv)
 	int ch;
 
 	seed_rng();
-#ifdef WITH_OPENSSL
-	ERR_load_CRYPTO_strings();
-#endif
 
 	/* Handle systems without __progname */
 	if (__progname == NULL) {
@@ -289,24 +281,6 @@ test_subtest_info(const char *fmt, ...)
 	va_end(ap);
 }
 
-void
-ssl_err_check(const char *file, int line)
-{
-#ifdef WITH_OPENSSL
-	long openssl_error = ERR_get_error();
-
-	if (openssl_error == 0)
-		return;
-
-	fprintf(stderr, "\n%s:%d: uncaught OpenSSL error: %s",
-	    file, line, ERR_error_string(openssl_error, NULL));
-#else /* WITH_OPENSSL */
-	fprintf(stderr, "\n%s:%d: uncaught OpenSSL error ",
-	    file, line);
-#endif /* WITH_OPENSSL */
-	abort();
-}
-
 static const char *
 pred_name(enum test_predicate p)
 {
@@ -347,21 +321,6 @@ test_header(const char *file, int line, const char *a1, const char *a2,
 	    name, pred_name(pred), a1,
 	    a2 != NULL ? ", " : "", a2 != NULL ? a2 : "");
 }
-
-#ifdef WITH_OPENSSL
-void
-assert_bignum(const char *file, int line, const char *a1, const char *a2,
-    const BIGNUM *aa1, const BIGNUM *aa2, enum test_predicate pred)
-{
-	int r = BN_cmp(aa1, aa2);
-
-	TEST_CHECK_INT(r, pred);
-	test_header(file, line, a1, a2, "BIGNUM", pred);
-	fprintf(stderr, "%12s = 0x%s\n", a1, BN_bn2hex(aa1));
-	fprintf(stderr, "%12s = 0x%s\n", a2, BN_bn2hex(aa2));
-	test_die();
-}
-#endif
 
 void
 assert_string(const char *file, int line, const char *a1, const char *a2,
