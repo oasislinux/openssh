@@ -698,6 +698,7 @@ static void
 do_convert_from(struct passwd *pw)
 {
 	struct sshkey *k = NULL;
+	struct sshbuf *b;
 	int r, private = 0, ok = 0;
 	struct stat st;
 
@@ -728,21 +729,12 @@ do_convert_from(struct passwd *pw)
 		if (ok)
 			fprintf(stdout, "\n");
 	} else {
-		switch (k->type) {
-#if 0
-		case KEY_ECDSA:
-			ok = PEM_write_ECPrivateKey(stdout, k->ecdsa, NULL,
-			    NULL, 0, NULL, NULL);
-			break;
-		case KEY_RSA:
-			ok = PEM_write_RSAPrivateKey(stdout, k->rsa, NULL,
-			    NULL, 0, NULL, NULL);
-			break;
-#endif
-		default:
-			fatal("%s: unsupported key type %s", __func__,
-			    sshkey_type(k));
-		}
+		if ((b = sshbuf_new()) == NULL)
+			fatal("%s: sshbuf_new failed", __func__);
+		if (sshkey_private_to_fileblob(k, b, "", "", SSHKEY_PRIVATE_PEM, NULL, 0) != 0)
+			fatal("%s: sshkey_private_to_fileblob failed", __func__);
+		ok = fwrite(sshbuf_ptr(b), sshbuf_len(b), 1, stdout) == 1;
+		sshbuf_free(b);
 	}
 
 	if (!ok)
