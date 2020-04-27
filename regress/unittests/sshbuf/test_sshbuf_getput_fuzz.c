@@ -16,12 +16,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <openssl/bn.h>
-#include <openssl/objects.h>
-#ifdef OPENSSL_HAS_NISTP256
-# include <openssl/ec.h>
-#endif
-
 #include "../test_helper/test_helper.h"
 #include "ssherr.h"
 #include "sshbuf.h"
@@ -32,12 +26,6 @@ static void
 attempt_parse_blob(u_char *blob, size_t len)
 {
 	struct sshbuf *p1;
-#ifdef WITH_OPENSSL
-	BIGNUM *bn;
-#if defined(OPENSSL_HAS_ECC) && defined(OPENSSL_HAS_NISTP256)
-	EC_KEY *eck;
-#endif /* defined(OPENSSL_HAS_ECC) && defined(OPENSSL_HAS_NISTP256) */
-#endif /* WITH_OPENSSL */
 	u_char *s;
 	size_t l;
 	u_int8_t u8;
@@ -56,17 +44,8 @@ attempt_parse_blob(u_char *blob, size_t len)
 		bzero(s, l);
 		free(s);
 	}
-#ifdef WITH_OPENSSL
-	bn = NULL;
-	sshbuf_get_bignum2(p1, &bn);
-	BN_clear_free(bn);
-#if defined(OPENSSL_HAS_ECC) && defined(OPENSSL_HAS_NISTP256)
-	eck = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
-	ASSERT_PTR_NE(eck, NULL);
-	sshbuf_get_eckey(p1, eck);
-	EC_KEY_free(eck);
-#endif /* defined(OPENSSL_HAS_ECC) && defined(OPENSSL_HAS_NISTP256) */
-#endif /* WITH_OPENSSL */
+	sshbuf_get_bignum2_bytes_direct(p1, NULL, NULL);
+	sshbuf_get_ec_bytes_direct(p1, NULL, NULL);
 	sshbuf_free(p1);
 }
 
