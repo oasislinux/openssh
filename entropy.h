@@ -25,6 +25,11 @@
 #ifndef _RANDOMS_H
 #define _RANDOMS_H
 
+#ifdef WITH_BEARSSL
+#include <bearssl.h>
+extern const br_prng_class arc4random_prng;
+#endif
+
 struct sshbuf;
 
 void seed_rng(void);

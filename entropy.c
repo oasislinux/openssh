@@ -29,6 +29,28 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef WITH_BEARSSL
+static void
+prng_init(const br_prng_class **ctx, const void *params, const void *seed, size_t len)
+{
+}
+
+static void
+prng_generate(const br_prng_class **ctx, void *out, size_t len)
+{
+	arc4random_buf(out, len);
+}
+
+static void
+prng_update(const br_prng_class **ctx, const void *seed, size_t len)
+{
+}
+
+const br_prng_class arc4random_prng = {
+	0, prng_init, prng_generate, prng_update
+};
+#endif
+
 /* Actual initialisation is handled in arc4random() */
 void
 seed_rng(void)

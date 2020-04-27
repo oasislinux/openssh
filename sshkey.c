@@ -1481,31 +1481,11 @@ sshkey_cert_type(const struct sshkey *k)
 	}
 }
 
-static void
-rng_init(const br_prng_class **ctx, const void *params, const void *seed, size_t len)
-{
-}
-
-static void
-rng_generate(const br_prng_class **ctx, void *out, size_t len)
-{
-	arc4random_buf(out, len);
-}
-
-static void
-rng_update(const br_prng_class **ctx, const void *seed, size_t len)
-{
-}
-
-static const br_prng_class rng_vtable = {
-	0, rng_init, rng_generate, rng_update
-};
-static const br_prng_class *rng = &rng_vtable;
-
 int
 sshkey_generate(int type, u_int bits, struct sshkey **keyp)
 {
 	struct sshkey *k;
+	const br_prng_class *rng = &arc4random_prng;
 	br_rsa_compute_privexp privexp;
 	int ret = SSH_ERR_INTERNAL_ERROR;
 
