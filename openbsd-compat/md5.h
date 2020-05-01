@@ -15,7 +15,7 @@
 #ifndef _MD5_H_
 #define _MD5_H_
 
-#ifndef WITH_OPENSSL
+#ifndef WITH_BEARSSL
 
 #define	MD5_BLOCK_LENGTH		64
 #define	MD5_DIGEST_LENGTH		16
@@ -46,6 +46,6 @@ char	*MD5Data(const u_int8_t *, size_t, char *)
 		__attribute__((__bounded__(__string__,1,2)))
 		__attribute__((__bounded__(__minbytes__,3,MD5_DIGEST_STRING_LENGTH)));
 
-#endif /* !WITH_OPENSSL */
+#endif /* !WITH_BEARSSL */
 
 #endif /* _MD5_H_ */

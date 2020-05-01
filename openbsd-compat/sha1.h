@@ -9,7 +9,7 @@
 #ifndef _SHA1_H
 #define _SHA1_H
 
-#ifndef WITH_OPENSSL
+#ifndef WITH_BEARSSL
 
 #define	SHA1_BLOCK_LENGTH		64
 #define	SHA1_DIGEST_LENGTH		20
@@ -54,5 +54,5 @@ char *SHA1Data(const u_int8_t *, size_t, char *)
         x[3] = ntohl(x[3]);                                             \
         x[4] = ntohl(x[4]); } while (0)
 
-#endif /* !WITH_OPENSSL */
+#endif /* !WITH_BEARSSL */
 #endif /* _SHA1_H */
