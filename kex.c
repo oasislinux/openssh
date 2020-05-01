@@ -37,9 +37,8 @@
 #include <poll.h>
 #endif
 
-#ifdef WITH_OPENSSL
-#include <openssl/crypto.h>
-#include <openssl/dh.h>
+#ifdef WITH_BEARSSL
+#include <bearssl.h>
 #endif
 
 #include "ssh.h"
@@ -86,33 +85,27 @@ struct kexalg {
 	int hash_alg;
 };
 static const struct kexalg kexalgs[] = {
-#ifdef WITH_OPENSSL
+#ifdef WITH_BEARSSL
+#if 0
 	{ KEX_DH1, KEX_DH_GRP1_SHA1, 0, SSH_DIGEST_SHA1 },
 	{ KEX_DH14_SHA1, KEX_DH_GRP14_SHA1, 0, SSH_DIGEST_SHA1 },
 	{ KEX_DH14_SHA256, KEX_DH_GRP14_SHA256, 0, SSH_DIGEST_SHA256 },
 	{ KEX_DH16_SHA512, KEX_DH_GRP16_SHA512, 0, SSH_DIGEST_SHA512 },
 	{ KEX_DH18_SHA512, KEX_DH_GRP18_SHA512, 0, SSH_DIGEST_SHA512 },
 	{ KEX_DHGEX_SHA1, KEX_DH_GEX_SHA1, 0, SSH_DIGEST_SHA1 },
-#ifdef HAVE_EVP_SHA256
 	{ KEX_DHGEX_SHA256, KEX_DH_GEX_SHA256, 0, SSH_DIGEST_SHA256 },
-#endif /* HAVE_EVP_SHA256 */
-#ifdef OPENSSL_HAS_ECC
+#endif
 	{ KEX_ECDH_SHA2_NISTP256, KEX_ECDH_SHA2, BR_EC_secp256r1,
 	    SSH_DIGEST_SHA256 },
 	{ KEX_ECDH_SHA2_NISTP384, KEX_ECDH_SHA2, BR_EC_secp384r1,
 	    SSH_DIGEST_SHA384 },
-# ifdef OPENSSL_HAS_NISTP521
 	{ KEX_ECDH_SHA2_NISTP521, KEX_ECDH_SHA2, BR_EC_secp521r1,
 	    SSH_DIGEST_SHA512 },
-# endif /* OPENSSL_HAS_NISTP521 */
-#endif /* OPENSSL_HAS_ECC */
-#endif /* WITH_OPENSSL */
-#if defined(HAVE_EVP_SHA256) || !defined(WITH_OPENSSL)
+#endif /* WITH_BEARSSL */
 	{ KEX_CURVE25519_SHA256, KEX_C25519_SHA256, 0, SSH_DIGEST_SHA256 },
 	{ KEX_CURVE25519_SHA256_OLD, KEX_C25519_SHA256, 0, SSH_DIGEST_SHA256 },
 	{ KEX_SNTRUP4591761X25519_SHA512, KEX_KEM_SNTRUP4591761X25519_SHA512, 0,
 	    SSH_DIGEST_SHA512 },
-#endif /* HAVE_EVP_SHA256 || !WITH_OPENSSL */
 	{ NULL, 0, -1, -1},
 };
 
@@ -681,12 +674,12 @@ kex_free(struct kex *kex)
 	if (kex == NULL)
 		return;
 
-#ifdef WITH_OPENSSL
+#ifdef WITH_BEARSSL
+#if 0
 	DH_free(kex->dh);
-#ifdef OPENSSL_HAS_ECC
-	EC_KEY_free(kex->ec_client_key);
-#endif /* OPENSSL_HAS_ECC */
-#endif /* WITH_OPENSSL */
+#endif
+	freezero(kex->ec_client_key, sizeof(*kex->ec_client_key));
+#endif /* WITH_BEARSSL */
 	for (mode = 0; mode < MODE_MAX; mode++) {
 		kex_free_newkeys(kex->newkeys[mode]);
 		kex->newkeys[mode] = NULL;

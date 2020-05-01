@@ -29,31 +29,9 @@
 #include "mac.h"
 #include "crypto_api.h"
 
-#ifdef WITH_OPENSSL
-# include <openssl/bn.h>
-# include <openssl/dh.h>
-# include <openssl/ecdsa.h>
-# ifdef OPENSSL_HAS_ECC
-#  include <openssl/ec.h>
-# else /* OPENSSL_HAS_ECC */
-#  define EC_KEY	void
-#  define EC_GROUP	void
-#  define EC_POINT	void
-# endif /* OPENSSL_HAS_ECC */
-#elif defined(WITH_BEARSSL)
-# include <bearssl.h>
-# define DH		void
-# define BIGNUM		void
-# define EC_KEY		br_ec_private_key
-# define EC_GROUP	void
-# define EC_POINT	void
-#else /* WITH_OPENSSL */
-# define DH		void
-# define BIGNUM		void
-# define EC_KEY		void
-# define EC_GROUP	void
-# define EC_POINT	void
-#endif /* WITH_OPENSSL */
+#ifdef WITH_BEARSSL
+#include <bearssl.h>
+#endif /* WITH_BEARSSL */
 
 #define KEX_COOKIE_LEN	16
 
@@ -169,12 +147,13 @@ struct kex {
 	    u_char **, size_t *, const u_char *, size_t, const char *);
 	int	(*kex[KEX_MAX])(struct ssh *);
 	/* kex specific state */
+#if 0
 	DH	*dh;			/* DH */
-	u_int	min, max, nbits;	/* GEX */
-	EC_KEY	*ec_client_key;		/* ECDH */
-	const EC_GROUP *ec_group;	/* ECDH */
-	u_char c25519_client_key[CURVE25519_SIZE]; /* 25519 + KEM */
-	u_char c25519_client_pubkey[CURVE25519_SIZE]; /* 25519 */
+#endif
+	u_int	min, max, nbits;			/* GEX */
+	struct sshkey_ecdsa_sk *ec_client_key;		/* ECDH */
+	u_char c25519_client_key[CURVE25519_SIZE]; 	/* 25519 + KEM */
+	u_char c25519_client_pubkey[CURVE25519_SIZE]; 	/* 25519 */
 	u_char sntrup4591761_client_key[crypto_kem_sntrup4591761_SECRETKEYBYTES]; /* KEM */
 	struct sshbuf *client_pub;
 };
@@ -231,6 +210,7 @@ int	 kex_kem_sntrup4591761x25519_enc(struct kex *, const struct sshbuf *,
 int	 kex_kem_sntrup4591761x25519_dec(struct kex *, const struct sshbuf *,
     struct sshbuf **);
 
+#if 0
 int	 kex_dh_keygen(struct kex *);
 int	 kex_dh_compute_key(struct kex *, BIGNUM *, struct sshbuf *);
 
@@ -240,6 +220,7 @@ int	 kexgex_hash(int, const struct sshbuf *, const struct sshbuf *,
     const BIGNUM *, const BIGNUM *, const BIGNUM *,
     const BIGNUM *, const u_char *, size_t,
     u_char *, size_t *);
+#endif
 
 void	kexc25519_keygen(u_char key[CURVE25519_SIZE], u_char pub[CURVE25519_SIZE])
 	__attribute__((__bounded__(__minbytes__, 1, CURVE25519_SIZE)))
@@ -255,12 +236,6 @@ int	kexc25519_shared_key_ext(const u_char key[CURVE25519_SIZE],
 
 #if defined(DEBUG_KEX) || defined(DEBUG_KEXDH) || defined(DEBUG_KEXECDH)
 void	dump_digest(const char *, const u_char *, int);
-#endif
-
-#if !defined(WITH_OPENSSL) || !defined(OPENSSL_HAS_ECC)
-# undef EC_KEY
-# undef EC_GROUP
-# undef EC_POINT
 #endif
 
 #endif

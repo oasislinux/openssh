@@ -70,9 +70,9 @@ per cipher operation.
 Key exchange
 ------------
 
-Not yet implemented using BearSSL. Only curve25519-sha256,
-curve25519-sha256@libssh.org, and sntrup4591761x25519-sha512@tinyssh.org
-are supported, just as in --without-openssl.
+The ecdh-sha2-* KEX methods are implemented using BearSSL.
+
+The Diffie-Hellman KEX methods are not yet supported.
 
 Digest
 ------

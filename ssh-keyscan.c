@@ -280,7 +280,8 @@ keygrab_ssh2(con *c)
 		fprintf(stderr, "kex_setup: %s\n", ssh_err(r));
 		exit(1);
 	}
-#ifdef WITH_OPENSSL
+#ifdef WITH_BEARSSL
+#if 0
 	c->c_ssh->kex->kex[KEX_DH_GRP1_SHA1] = kex_gen_client;
 	c->c_ssh->kex->kex[KEX_DH_GRP14_SHA1] = kex_gen_client;
 	c->c_ssh->kex->kex[KEX_DH_GRP14_SHA256] = kex_gen_client;
@@ -288,9 +289,8 @@ keygrab_ssh2(con *c)
 	c->c_ssh->kex->kex[KEX_DH_GRP18_SHA512] = kex_gen_client;
 	c->c_ssh->kex->kex[KEX_DH_GEX_SHA1] = kexgex_client;
 	c->c_ssh->kex->kex[KEX_DH_GEX_SHA256] = kexgex_client;
-# ifdef OPENSSL_HAS_ECC
+#endif
 	c->c_ssh->kex->kex[KEX_ECDH_SHA2] = kex_gen_client;
-# endif
 #endif
 	c->c_ssh->kex->kex[KEX_C25519_SHA256] = kex_gen_client;
 	c->c_ssh->kex->kex[KEX_KEM_SNTRUP4591761X25519_SHA512] = kex_gen_client;
