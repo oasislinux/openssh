@@ -28,6 +28,8 @@
 #include "crypto_api.h"
 #include "sk-api.h"
 
+#include <bearssl.h>
+
 /* #define SK_DEBUG 1 */
 
 #if SSH_SK_VERSION_MAJOR != 0x00050000
@@ -63,7 +65,6 @@ sk_api_version(void)
 static int
 pack_key_ecdsa(struct sk_enroll_response *response)
 {
-#ifdef WITH_BEARSSL
 	br_ec_private_key sk;
 	br_ec_public_key pk;
 	const br_prng_class *rng = &arc4random_prng;
@@ -122,9 +123,6 @@ pack_key_ecdsa(struct sk_enroll_response *response)
 		}
 	}
 	return ret;
-#else
-	return -1;
-#endif
 }
 
 static int
@@ -261,7 +259,6 @@ sig_ecdsa(const uint8_t *message, size_t message_len,
     const uint8_t *key_handle, size_t key_handle_len,
     struct sk_sign_response *response)
 {
-#ifdef WITH_BEARSSL
 	int ret = -1;
 	br_sha256_context ctx;
 	br_ec_private_key sk;
@@ -280,7 +277,7 @@ sig_ecdsa(const uint8_t *message, size_t message_len,
 	sk.x = (unsigned char *)key_handle + 1;
 	sk.xlen = key_handle_len - 1;
 	/* Expect message to be pre-hashed */
-	if (message_len != SHA256_DIGEST_LENGTH) {
+	if (message_len != br_sha256_SIZE) {
 		skdebug(__func__, "bad message len %zu", message_len);
 		goto out;
 	}
@@ -332,9 +329,6 @@ sig_ecdsa(const uint8_t *message, size_t message_len,
 		response->sig_s = NULL;
 	}
 	return ret;
-#else
-	return -1;
-#endif
 }
 
 static int
@@ -357,7 +351,7 @@ sig_ed25519(const uint8_t *message, size_t message_len,
 		goto out;
 	}
 	/* Expect message to be pre-hashed */
-	if (message_len != SHA256_DIGEST_LENGTH) {
+	if (message_len != br_sha256_SIZE) {
 		skdebug(__func__, "bad message len %zu", message_len);
 		goto out;
 	}
