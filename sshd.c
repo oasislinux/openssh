@@ -422,18 +422,8 @@ reseed_prngs(void)
 {
 	u_int32_t rnd[256];
 
-#ifdef WITH_OPENSSL
-	RAND_poll();
-#endif
 	arc4random_stir(); /* noop on recent arc4random() implementations */
 	arc4random_buf(rnd, sizeof(rnd)); /* let arc4random notice PID change */
-
-#ifdef WITH_OPENSSL
-	RAND_seed(rnd, sizeof(rnd));
-	/* give libcrypto a chance to notice the PID change */
-	if ((RAND_bytes((u_char *)rnd, 1)) != 1)
-		fatal("%s: RAND_bytes failed", __func__);
-#endif
 
 	explicit_bzero(rnd, sizeof(rnd));
 }
@@ -1330,11 +1320,6 @@ server_accept_loop(int *sock_in, int *sock_out, int *newsock, int *config_s)
 			 */
 			arc4random_stir();
 			arc4random_buf(rnd, sizeof(rnd));
-#ifdef WITH_OPENSSL
-			RAND_seed(rnd, sizeof(rnd));
-			if ((RAND_bytes((u_char *)rnd, 1)) != 1)
-				fatal("%s: RAND_bytes failed", __func__);
-#endif
 			explicit_bzero(rnd, sizeof(rnd));
 		}
 	}
