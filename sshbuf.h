@@ -1,4 +1,4 @@
-/*	$OpenBSD: sshbuf.h,v 1.20 2020/03/13 03:17:07 djm Exp $	*/
+/*	$OpenBSD: sshbuf.h,v 1.21 2020/04/26 09:38:14 dtucker Exp $	*/
 /*
  * Copyright (c) 2011 Damien Miller
  *
