@@ -5,13 +5,13 @@ This repository contains a port of OpenSSH using BearSSL[0] crypto.
 DISCLAIMER: This port has not undergone any code review, and is not
 affiliated with the OpenSSH project. Use at your own risk.
 
+This document collects some details and considerations made during
+the porting process.
+
 NOTE: If any of your keys are in PKCS#8 or raw PEM format (the
 default before OpenSSH 7.8) and either are RSA or have a passphrase,
 you will need to convert them to the new format first using `ssh-keygen
 -f /path/to/key -p`. See below for more details.
-
-This document collects some details and considerations made during
-the porting process.
 
 OpenSSL is already an optional dependency of OpenSSH, so relevant
 code is guarded by `#ifdef WITH_OPENSSL`. This made it easy to
@@ -41,8 +41,9 @@ counter and 8-byte IV. Together, these are decoded as four little-endian
 
 In the ChaCha20/Poly1305 cipher used by OpenSSH, the 8-byte IV is
 constructed by encoding a 32-bit sequence number as big-endian into
-8 bytes. Additionally, only two counter values are used; the encodings
-of 0 and 1 as 64-bit little endian (so the 1 appears in 12th word).
+8 bytes (so bytes 4-7 are zero). Additionally, only two counter
+values are used: the encodings of 0 and 1 as 64-bit little endian
+(so the 1 appears in the 12th word).
 
 Therefore, we can call the BearSSL ChaCha20 implementation using
 counter values 0 and 1, and a 12-byte IV with the first 4 bytes
