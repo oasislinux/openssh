@@ -1,5 +1,5 @@
 #!/bin/sh
-# $OpenBSD: mktestdata.sh,v 1.7 2018/09/12 01:36:45 djm Exp $
+# $OpenBSD: mktestdata.sh,v 1.10 2020/05/01 04:03:14 djm Exp $
 
 PW=mekmitasdigoat
 
