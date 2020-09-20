@@ -32,7 +32,7 @@
 
 /* #define SK_DEBUG 1 */
 
-#if SSH_SK_VERSION_MAJOR != 0x00050000
+#if SSH_SK_VERSION_MAJOR != 0x00070000
 # error SK API has changed, sk-dummy.c needs an update
 #endif
 
