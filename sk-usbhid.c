@@ -838,7 +838,7 @@ pack_sig_ecdsa(fido_assert_t *assert, struct sk_sign_response *response)
 	memcpy(response->sig_s, raw + raw_len / 2, raw_len / 2);
 	ret = 0;
  out:
-	freezero(raw, raw_len);
+	freezero(raw, asn1_len);
 	if (ret != 0) {
 		free(response->sig_r);
 		free(response->sig_s);
