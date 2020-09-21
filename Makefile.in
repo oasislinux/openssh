@@ -535,7 +535,6 @@ UNITTESTS_TEST_SSHBUF_OBJS=\
 	regress/unittests/sshbuf/tests.o \
 	regress/unittests/sshbuf/test_sshbuf.o \
 	regress/unittests/sshbuf/test_sshbuf_getput_basic.o \
-	regress/unittests/sshbuf/test_sshbuf_getput_crypto.o \
 	regress/unittests/sshbuf/test_sshbuf_misc.o \
 	regress/unittests/sshbuf/test_sshbuf_fuzz.o \
 	regress/unittests/sshbuf/test_sshbuf_getput_fuzz.o \
