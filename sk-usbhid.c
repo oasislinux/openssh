@@ -26,6 +26,7 @@
 #include <stdio.h>
 #include <stddef.h>
 #include <stdarg.h>
+#include <time.h>
 #ifdef HAVE_SHA2_H
 #include <sha2.h>
 #endif
