@@ -1,4 +1,4 @@
-/* $OpenBSD: cipher.c,v 1.117 2020/04/03 04:27:03 djm Exp $ */
+/* $OpenBSD: cipher.c,v 1.118 2020/12/21 11:09:32 dtucker Exp $ */
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
  * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
@@ -97,8 +97,6 @@ static const struct sshcipher ciphers[] = {
 	{ "aes128-cbc",		16, 16, 16, 0, CIPHER_AESCBC },
 	{ "aes192-cbc",		16, 24, 16, 0, CIPHER_AESCBC },
 	{ "aes256-cbc",		16, 32, 16, 0, CIPHER_AESCBC },
-	{ "rijndael-cbc@lysator.liu.se",
-				16, 32, 16, 0, CIPHER_AESCBC },
 	{ "aes128-gcm@openssh.com",
 				16, 16, 12, 16, CIPHER_AESGCM },
 	{ "aes256-gcm@openssh.com",

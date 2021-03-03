@@ -1,4 +1,4 @@
-/* $OpenBSD: digest-bearssl.c,v 1.7 2017/05/08 22:57:38 djm Exp $ */
+/* $OpenBSD: digest-bearssl.c,v 1.9 2020/10/29 02:52:43 djm Exp $ */
 /*
  * Copyright (c) 2013 Damien Miller <djm@mindrot.org>
  *
@@ -43,11 +43,11 @@ struct ssh_digest {
 
 /* NB. Indexed directly by algorithm number */
 const struct ssh_digest digests[] = {
-	{ SSH_DIGEST_MD5,	"MD5",	 	&br_md5_vtable },
-	{ SSH_DIGEST_SHA1,	"SHA1",	 	&br_sha1_vtable },
-	{ SSH_DIGEST_SHA256,	"SHA256", 	&br_sha256_vtable },
+	{ SSH_DIGEST_MD5,	"MD5",		&br_md5_vtable },
+	{ SSH_DIGEST_SHA1,	"SHA1",		&br_sha1_vtable },
+	{ SSH_DIGEST_SHA256,	"SHA256",	&br_sha256_vtable },
 	{ SSH_DIGEST_SHA384,	"SHA384",	&br_sha384_vtable },
-	{ SSH_DIGEST_SHA512,	"SHA512", 	&br_sha512_vtable },
+	{ SSH_DIGEST_SHA512,	"SHA512",	&br_sha512_vtable },
 	{ -1,			NULL,		NULL },
 };
 
