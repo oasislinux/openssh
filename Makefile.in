@@ -770,4 +770,4 @@ package: $(CONFIGFILES) $(MANPAGES) $(TARGETS)
 		sh buildpkg.sh; \
 	fi
 
-# @DEPEND@
+@DEPEND@
