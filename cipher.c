@@ -1,4 +1,4 @@
-/* $OpenBSD: cipher.c,v 1.118 2020/12/21 11:09:32 dtucker Exp $ */
+/* $OpenBSD: cipher.c,v 1.119 2021/04/03 06:18:40 djm Exp $ */
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
  * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
