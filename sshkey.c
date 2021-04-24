@@ -4170,9 +4170,7 @@ sshkey_parse_private_pem_fileblob(struct sshbuf *blob, int type,
 		/* Compute public modulus, public exponent, and
 		 * private exponent. This will fail if p or q is
 		 * not 3 mod 4. */
-		prv->rsa_pk->key.n = prv->rsa_pk->data;
-		if ((prv->rsa_pk->key.nlen = compute_modulus(prv->rsa_pk->key.n,
-		    rsa)) == 0 ||
+		if ((prv->rsa_pk->key.nlen = compute_modulus(NULL, rsa)) == 0 ||
 		    (pubexp = br_rsa_compute_pubexp_get_default()(rsa)) == 0 ||
 		    (prv->rsa_sk->dlen = compute_privexp(NULL, rsa,
 		    pubexp)) == 0) {
@@ -4186,6 +4184,7 @@ sshkey_parse_private_pem_fileblob(struct sshbuf *blob, int type,
 			r = SSH_ERR_NO_BUFFER_SPACE;
 			goto out;
 		}
+		prv->rsa_pk->key.n = prv->rsa_pk->data;
 		compute_modulus(prv->rsa_pk->key.n, rsa);
 		if (compute_privexp(prv->rsa_sk->d, rsa, pubexp) !=
 		    prv->rsa_sk->dlen) {
