@@ -461,10 +461,9 @@ do_convert_private_ssh2(struct sshbuf *b)
 	char *type, *cipher;
 	u_char *sig = NULL, data[] = "abcde12345";
 	int r, rlen, ktype;
-	u_int magic, i1, i2, i3, i4;
+	u_int magic, i1, i2, i3;
 	size_t slen;
-	u_char rsa_e[3];
-	const u_char *rsa_n, *rsa_d, *rsa_p, *rsa_q, *rsa_iq;
+	const u_char *rsa_e, *rsa_n, *rsa_d, *rsa_p, *rsa_q, *rsa_iq;
 	size_t rsa_elen, rsa_nlen, rsa_dlen, rsa_plen, rsa_qlen, rsa_iqlen;
 
 	if ((r = sshbuf_get_u32(b, &magic)) != 0)
@@ -479,10 +478,9 @@ do_convert_private_ssh2(struct sshbuf *b)
 	    (r = sshbuf_get_cstring(b, &type, NULL)) != 0 ||
 	    (r = sshbuf_get_cstring(b, &cipher, NULL)) != 0 ||
 	    (r = sshbuf_get_u32(b, &i2)) != 0 ||
-	    (r = sshbuf_get_u32(b, &i3)) != 0 ||
-	    (r = sshbuf_get_u32(b, &i4)) != 0)
+	    (r = sshbuf_get_u32(b, &i3)) != 0)
 		fatal_fr(r, "parse");
-	debug("ignore (%d %d %d %d)", i1, i2, i3, i4);
+	debug("ignore (%d %d %d)", i1, i2, i3);
 	if (strcmp(cipher, "none") != 0) {
 		error("unsupported cipher %s", cipher);
 		free(cipher);
@@ -506,25 +504,21 @@ do_convert_private_ssh2(struct sshbuf *b)
 		key->rsa_pk = xcalloc(1, sizeof(*key->rsa_pk));
 		key->rsa_sk = xcalloc(1, sizeof(*key->rsa_sk));
 
-		if ((r = sshbuf_get_u8(b, &rsa_e[0])) != 0 ||
-		    (rsa_e[0] < 30 && (r = sshbuf_get_u8(b, &rsa_e[1])) != 0) ||
-		    (rsa_e[0] < 30 && (r = sshbuf_get_u8(b, &rsa_e[2])) != 0))
-			fatal_fr(r, "parse RSA");
-		rsa_elen = rsa_e[0] < 30 ? 3 : 1;
-		key->rsa_pk->key.e = key->rsa_pk->data;
-		key->rsa_pk->key.elen = rsa_elen;
-		memcpy(key->rsa_pk->key.e, rsa_e, rsa_elen);
-
+		buffer_get_bignum_bits_direct(b, &rsa_e, &rsa_elen);
 		buffer_get_bignum_bits_direct(b, &rsa_d, &rsa_dlen);
 		buffer_get_bignum_bits_direct(b, &rsa_n, &rsa_nlen);
 		buffer_get_bignum_bits_direct(b, &rsa_iq, &rsa_iqlen);
 		buffer_get_bignum_bits_direct(b, &rsa_q, &rsa_qlen);
 		buffer_get_bignum_bits_direct(b, &rsa_p, &rsa_plen);
 
-		if (key->rsa_pk->key.elen + rsa_nlen > sizeof(key->rsa_pk->data) ||
+		if (rsa_elen + rsa_nlen > sizeof(key->rsa_pk->data) ||
 		    rsa_dlen > sizeof(key->rsa_sk->d) ||
 		    rsa_iqlen + rsa_plen + rsa_qlen > sizeof(key->rsa_sk->data))
 			fatal_f("RSA key is too large");
+
+		key->rsa_pk->key.e = key->rsa_pk->data;
+		key->rsa_pk->key.elen = rsa_elen;
+		memcpy(key->rsa_pk->key.e, rsa_e, rsa_elen);
 
 		key->rsa_pk->key.n = key->rsa_pk->key.e + rsa_elen;
 		key->rsa_pk->key.nlen = rsa_nlen;
