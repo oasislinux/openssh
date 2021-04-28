@@ -38,8 +38,8 @@ typedef unsigned short	u16;
 typedef unsigned int	u32;
 
 int	rijndaelKeySetupEnc(unsigned int [], const unsigned char [], int);
-void	rijndaelEncrypt(const unsigned int [], int, const unsigned char [],
-	    unsigned char []);
+void	rijndaelEncrypt(const unsigned int [], int, const unsigned char [16],
+	    unsigned char [16]);
 
 /*  The structure for key information */
 typedef struct {
