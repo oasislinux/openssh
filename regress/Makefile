@@ -2,7 +2,7 @@
 
 tests:		prep file-tests t-exec unit
 
-REGRESS_TARGETS=	t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12
+REGRESS_TARGETS=	t1 t2 t3 t4 t5 t7 t9 t10 t11 t12
 
 # File based tests
 file-tests: $(REGRESS_TARGETS)
@@ -128,7 +128,7 @@ CLEANFILES=	*.core actual agent-key.* authorized_keys_${USERNAME} \
 		ssh_proxy_* sshd.log sshd_config sshd_config.* \
 		sshd_config.* sshd_proxy sshd_proxy.* sshd_proxy_bak \
 		sshd_proxy_orig t10.out t10.out.pub t12.out t12.out.pub \
-		t2.out t3.out t6.out1 t6.out2 t7.out t7.out.pub \
+		t2.out t3.out t7.out t7.out.pub \
 		t8.out t8.out.pub t9.out t9.out.pub testdata \
 		user_*key* user_ca* user_key*
 
@@ -163,25 +163,12 @@ t5:
 	${TEST_SSH_SSHKEYGEN} -Bf ${.CURDIR}/rsa_openssh.pub |\
 		awk '{print $$2}' | diff - ${.CURDIR}/t5.ok
 
-t6:
-	${TEST_SSH_SSHKEYGEN} -if ${.CURDIR}/dsa_ssh2.prv > $(OBJ)/t6.out1
-	${TEST_SSH_SSHKEYGEN} -if ${.CURDIR}/dsa_ssh2.pub > $(OBJ)/t6.out2
-	chmod 600 $(OBJ)/t6.out1
-	${TEST_SSH_SSHKEYGEN} -yf $(OBJ)/t6.out1 | diff - $(OBJ)/t6.out2
-
 $(OBJ)/t7.out:
 	${TEST_SSH_SSHKEYGEN} -q -t rsa -N '' -f $@
 
 t7: $(OBJ)/t7.out
 	${TEST_SSH_SSHKEYGEN} -lf $(OBJ)/t7.out > /dev/null
 	${TEST_SSH_SSHKEYGEN} -Bf $(OBJ)/t7.out > /dev/null
-
-$(OBJ)/t8.out:
-	${TEST_SSH_SSHKEYGEN} -q -t dsa -N '' -f $@
-
-t8: $(OBJ)/t8.out
-	${TEST_SSH_SSHKEYGEN} -lf $(OBJ)/t8.out > /dev/null
-	${TEST_SSH_SSHKEYGEN} -Bf $(OBJ)/t8.out > /dev/null
 
 $(OBJ)/t9.out:
 	test "${TEST_SSH_ECC}" != yes || \
