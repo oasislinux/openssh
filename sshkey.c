@@ -4024,9 +4024,12 @@ sshkey_private_to_blob_pem_pkcs8(struct sshkey *key, struct sshbuf *buf,
 		goto out;
 	}
 	blen = br_pem_encode(NULL, der, dlen, pem_name, BR_PEM_LINE64);
-	if ((r = sshbuf_reserve(buf, blen, &pem)) != 0)
+	if ((r = sshbuf_reserve(buf, blen + 1, &pem)) != 0)
 		goto out;
 	br_pem_encode(pem, der, dlen, pem_name, BR_PEM_LINE64);
+	/* Remove terminating null byte */
+	if ((r = sshbuf_consume_end(buf, 1)) != 0)
+		goto out;
 	r = 0;
  out:
 	if (was_shielded)
