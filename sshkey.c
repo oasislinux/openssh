@@ -1487,9 +1487,11 @@ int
 sshkey_generate(int type, u_int bits, struct sshkey **keyp)
 {
 	struct sshkey *k;
+	int ret = SSH_ERR_INTERNAL_ERROR;
+#ifdef WITH_BEARSSL
 	const br_prng_class *rng = &arc4random_prng;
 	br_rsa_compute_privexp privexp;
-	int ret = SSH_ERR_INTERNAL_ERROR;
+#endif /* WITH_BEARSSL */
 
 	if (keyp == NULL)
 		return SSH_ERR_INVALID_ARGUMENT;
