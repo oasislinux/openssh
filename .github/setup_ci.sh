@@ -1,20 +1,26 @@
 #!/usr/bin/env bash
 
-case $(./config.guess) in
-*-darwin*)
-	brew install automake
-	exit 0
-	;;
-esac
-
 TARGETS=$@
 
 PACKAGES=""
-INSTALL_FIDO_PPA="no"
+BEARSSL_BRANCH="v0.6"
 
 #echo "Setting up for '$TARGETS'"
 
 set -ex
+
+case $(./config.guess) in
+*-darwin*)
+	brew install automake
+	cd ${HOME}
+	git clone -b v0.6 https://bearssl.org/git/BearSSL bearssl
+	cd bearssl
+	make -j2
+	cp build/libbearssl.a /usr/local/lib
+	cp inc/*.h /usr/local/include
+	exit 0
+	;;
+esac
 
 lsb_release -a
 
@@ -24,7 +30,7 @@ fi
 
 for TARGET in $TARGETS; do
     case $TARGET in
-    default|without-openssl|without-zlib)
+    default|without-zlib)
         # nothing to do
         ;;
     kerberos5)
@@ -39,23 +45,24 @@ for TARGET in $TARGETS; do
         ;;
     sk)
         INSTALL_FIDO_PPA="yes"
-        PACKAGES="$PACKAGES libfido2-dev libu2f-host-dev libcbor-dev"
+        INSTALL_LIBFIDO2="yes"
+        PACKAGES="$PACKAGES libu2f-host-dev libcbor-dev"
         ;;
     selinux)
         PACKAGES="$PACKAGES libselinux1-dev selinux-policy-dev"
         ;;
     hardenedmalloc)
         INSTALL_HARDENED_MALLOC=yes
-       ;;
-    openssl-head)
-        INSTALL_OPENSSL_HEAD=yes
-       ;;
-    libressl-head)
-        INSTALL_LIBRESSL_HEAD=yes
-       ;;
+        ;;
+    bearssl-head)
+        BEARSSL_BRANCH="master"
+        ;;
+    without-bearssl)
+        BEARSSL_BRANCH=""
+        ;;
     valgrind*)
-       PACKAGES="$PACKAGES valgrind"
-       ;;
+        PACKAGES="$PACKAGES valgrind"
+        ;;
     *) echo "Invalid option '${TARGET}'"
         exit 1
         ;;
@@ -80,18 +87,17 @@ if [ "${INSTALL_HARDENED_MALLOC}" = "yes" ]; then
      make -j2 && sudo cp libhardened_malloc.so /usr/lib/)
 fi
 
-if [ "${INSTALL_OPENSSL_HEAD}" = "yes" ];then
+if [ "x" != "x$BEARSSL_BRANCH" ]; then
     (cd ${HOME} &&
-     git clone https://github.com/openssl/openssl.git &&
-     cd ${HOME}/openssl &&
-     ./config no-threads no-engine no-fips no-shared --prefix=/opt/openssl/head &&
-     make -j2 && sudo make install_sw)
+     git clone -b ${BEARSSL_BRANCH} https://bearssl.org/git/BearSSL bearssl &&
+     cd bearssl && make -j2 &&
+     sudo cp build/libbearssl.a /usr/local/lib &&
+     sudo cp inc/*.h /usr/local/include)
 fi
 
-if [ "${INSTALL_LIBRESSL_HEAD}" = "yes" ];then
-    (mkdir -p ${HOME}/libressl && cd ${HOME}/libressl &&
-     git clone https://github.com/libressl-portable/portable.git &&
-     cd ${HOME}/libressl/portable && sh update.sh && sh autogen.sh &&
-     ./configure --prefix=/opt/libressl/head &&
-     make -j2 && sudo make install_sw)
+if [ "x$INSTALL_LIBFIDO2" = "xyes" ]; then
+    (cd ${HOME} &&
+     git clone https://github.com/oasislinux/libfido2.git &&
+     cd libfido2 && cmake -DCMAKE_INSTALL_PREFIX=/usr . &&
+     make -j2 && sudo make install)
 fi

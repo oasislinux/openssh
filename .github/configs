@@ -20,7 +20,7 @@ CONFIGFLAGS=""
 LIBCRYPTOFLAGS=""
 
 case "$config" in
-    default|sol64)
+    default|sol64|bearssl-head)
 	;;
     kitchensink)
 	CONFIGFLAGS="--with-kerberos5 --with-libedit --with-pam"
@@ -40,20 +40,14 @@ case "$config" in
 	CONFIGFLAGS="--with-pam"
 	SSHD_CONFOPTS="UsePam yes"
 	;;
-    libressl-head)
-	LIBCRYPTOFLAGS="--with-ssl-dir=/opt/libressl/head --with-rpath=-Wl,-rpath,"
-	;;
-    openssl-head)
-	LIBCRYPTOFLAGS="--with-ssl-dir=/opt/openssl/head --with-rpath=-Wl,-rpath,"
-	;;
     selinux)
 	CONFIGFLAGS="--with-selinux"
 	;;
     sk)
 	CONFIGFLAGS="--with-security-key-builtin"
         ;;
-    without-openssl)
-	LIBCRYPTOFLAGS="--without-openssl"
+    without-bearssl)
+	LIBCRYPTOFLAGS="--without-bearssl"
 	TEST_TARGET=t-exec
 	;;
     valgrind-[1-4]|valgrind-unit)
@@ -99,7 +93,6 @@ esac
 case "$config" in
     sol64*)
 	CONFIGFLAGS="x86_64 --with-cflags=-m64 --with-ldflags=-m64 ${CONFIGFLAGS}"
-	LIBCRYPTOFLAGS="--with-ssl-dir=/usr/local/ssl64"
 	;;
 esac
 
@@ -110,16 +103,6 @@ case "${TARGET_HOST}" in
 	TEST_TARGET="tests SKIP_UNIT=1"
 	;;
 esac
-
-# If we have a local openssl/libressl, use that.
-if [ -z "${LIBCRYPTOFLAGS}" ]; then
-	# last-match
-	for i in /usr/local /usr/local/ssl /usr/local/opt/openssl; do
-		if [ -x ${i}/bin/openssl ]; then
-			LIBCRYPTOFLAGS="--with-ssl-dir=${i}"
-		fi
-	done
-fi
 
 CONFIGFLAGS="${CONFIGFLAGS} ${LIBCRYPTOFLAGS}"
 
