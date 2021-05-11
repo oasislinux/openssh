@@ -58,11 +58,6 @@
 #  include "md5crypt.h"
 # endif
 
-# if defined(WITH_OPENSSL) && !defined(HAVE_CRYPT) && defined(HAVE_DES_CRYPT)
-#  include <openssl/des.h>
-#  define crypt DES_crypt
-# endif
-
 /*
  * Pick an appropriate password encryption type and salt for the running
  * system by searching through accounts until we find one that has a valid

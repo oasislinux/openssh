@@ -2599,10 +2599,10 @@ if test "x$bearssl" = "xyes" ; then
 	    [AC_MSG_ERROR([*** working BearSSL not found, check config.log])])
 	AC_CHECK_HEADER([bearssl.h], ,
 	    [AC_MSG_ERROR([*** BearSSL headers missing - please install first or check config.log ***])])
-else
-	AC_CHECK_LIB([crypt], [crypt], [LIBS="$LIBS -lcrypt"])
-	AC_CHECK_FUNCS([crypt])
 fi
+
+AC_CHECK_LIB([crypt], [crypt], [LIBS="$LIBS -lcrypt"])
+AC_CHECK_FUNCS([crypt])
 
 # PKCS11/U2F depend on OpenSSL and dlopen().
 enable_pkcs11="disabled; missing libcrypto"
