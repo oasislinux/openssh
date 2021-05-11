@@ -121,8 +121,8 @@ AC_CHECK_DECL([PR_SET_NO_NEW_PRIVS], [have_linux_no_new_privs=1], , [
 bearssl=yes
 AC_ARG_WITH([bearssl],
 	[  --without-bearssl       Disable use of BearSSL; use only limited internal crypto ],
-	[  if test "x$withval" = "xyes" ; then
-		bearssl=yes
+	[  if test "x$withval" = "xno" ; then
+		bearssl=no
 	   fi
 	]
 )
