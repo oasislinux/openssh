@@ -19,9 +19,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#include <openssl/evp.h>
-#include <openssl/crypto.h>
-
 #include "ssherr.h"
 #include "authfile.h"
 #include "sshkey.h"
@@ -97,27 +94,21 @@ tests(void)
 	msg = load_file("signed-data");
 	TEST_DONE();
 
-#ifdef WITH_OPENSSL
+#ifdef WITH_BEARSSL
 	TEST_START("check RSA signature");
 	check_sig("rsa.pub", "rsa.sig", msg, namespace);
 	TEST_DONE();
 
-	TEST_START("check DSA signature");
-	check_sig("dsa.pub", "dsa.sig", msg, namespace);
-	TEST_DONE();
-
-#ifdef OPENSSL_HAS_ECC
 	TEST_START("check ECDSA signature");
 	check_sig("ecdsa.pub", "ecdsa.sig", msg, namespace);
 	TEST_DONE();
-#endif
 #endif
 
 	TEST_START("check ED25519 signature");
 	check_sig("ed25519.pub", "ed25519.sig", msg, namespace);
 	TEST_DONE();
 
-#if defined(WITH_OPENSSL) && defined(OPENSSL_HAS_ECC)
+#if defined(WITH_BEARSSL)
 	TEST_START("check ECDSA-SK signature");
 	check_sig("ecdsa_sk.pub", "ecdsa_sk.sig", msg, namespace);
 	TEST_DONE();
@@ -127,7 +118,7 @@ tests(void)
 	check_sig("ed25519_sk.pub", "ed25519_sk.sig", msg, namespace);
 	TEST_DONE();
 
-#if defined(WITH_OPENSSL) && defined(OPENSSL_HAS_ECC)
+#if defined(WITH_BEARSSL)
 	TEST_START("check ECDSA-SK webauthn signature");
 	check_sig("ecdsa_sk_webauthn.pub", "ecdsa_sk_webauthn.sig",
 	    msg, namespace);
