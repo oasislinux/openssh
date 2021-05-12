@@ -3411,6 +3411,9 @@ sshkey_ec_validate_public(int nid, const u_char *q, size_t qlen)
 	if ((ec->supported_curves & 1 << nid) == 0)
 		return SSH_ERR_LIBCRYPTO_ERROR;
 
+	if (nid == BR_EC_curve25519)
+		return qlen == 32 ? 0 : SSH_ERR_KEY_INVALID_EC_VALUE;
+
 	ec->generator(nid, &glen);
 	n = ec->order(nid, &nlen);
 

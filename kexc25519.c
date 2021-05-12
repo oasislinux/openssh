@@ -40,6 +40,46 @@
 #include "ssherr.h"
 #include "ssh2.h"
 
+#ifdef WITH_BEARSSL
+
+void
+kexc25519_keygen(u_char key[CURVE25519_SIZE], u_char pub[CURVE25519_SIZE])
+{
+	const br_ec_impl *ec;
+
+	ec = br_ec_get_default();
+	arc4random_buf(key, CURVE25519_SIZE);
+	ec->mulgen(pub, key, CURVE25519_SIZE, BR_EC_curve25519);
+}
+
+int
+kexc25519_shared_key_ext(const u_char key[CURVE25519_SIZE],
+    const u_char pub[CURVE25519_SIZE], struct sshbuf *out, int raw)
+{
+	const br_ec_impl *ec;
+	u_char shared_key[CURVE25519_SIZE];
+	u_char zero[CURVE25519_SIZE];
+	int r;
+
+	if (!raw)
+		return SSH_ERR_INTERNAL_ERROR;
+
+	ec = br_ec_get_default();
+	memcpy(shared_key, pub, CURVE25519_SIZE);
+	ec->mul(shared_key, CURVE25519_SIZE, key, CURVE25519_SIZE, BR_EC_curve25519);
+
+	/* Check for all-zero shared secret */
+	explicit_bzero(zero, CURVE25519_SIZE);
+	if (timingsafe_bcmp(zero, shared_key, CURVE25519_SIZE) == 0)
+		return SSH_ERR_KEY_INVALID_EC_VALUE;
+
+	r = sshbuf_put(out, shared_key, CURVE25519_SIZE);
+	explicit_bzero(shared_key, CURVE25519_SIZE);
+	return r;
+}
+
+#else
+
 extern int crypto_scalarmult_curve25519(u_char a[CURVE25519_SIZE],
     const u_char b[CURVE25519_SIZE], const u_char c[CURVE25519_SIZE])
 	__attribute__((__bounded__(__minbytes__, 1, CURVE25519_SIZE)))
@@ -197,3 +237,5 @@ kex_c25519_dec(struct kex *kex, const struct sshbuf *server_blob,
 	sshbuf_free(buf);
 	return r;
 }
+
+#endif /* WITH_BEARSSL */
