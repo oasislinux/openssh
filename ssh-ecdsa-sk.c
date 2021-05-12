@@ -44,6 +44,7 @@
 #include "digest.h"
 #define SSHKEY_INTERNAL
 #include "sshkey.h"
+#include "misc.h"
 
 #ifndef WITH_BEARSSL
 /* ARGSUSED */
@@ -230,16 +231,11 @@ ssh_ecdsa_sk_verify(const struct sshkey *key,
 		sshbuf_dump(webauthn_wrapper, stderr);
 	}
 #endif
-	memcpy(sig, sig_r, sig_rlen);
-	if (sig_rlen < sig_slen) {
-		memmove(sig, sig + (sig_slen - sig_rlen), sig_rlen);
-		memset(sig, 0, sig_slen - sig_rlen);
-		sig_rlen = sig_slen;
-	}
-	memset(sig + sig_rlen, 0, sig_rlen - sig_slen);
-	memcpy(sig + sig_rlen + (sig_rlen - sig_slen), sig_s, sig_slen);
-	slen = sig_rlen * 2;
-	sig_r = sig_s = NULL; /* transferred */
+	slen = MAXIMUM(sig_rlen, sig_slen) * 2;
+	memset(sig, 0, slen / 2 - sig_rlen);
+	memcpy(sig + (slen / 2 - sig_rlen), sig_r, sig_rlen);
+	memset(sig + slen / 2, 0, slen / 2 - sig_slen);
+	memcpy(sig + (slen - sig_slen), sig_s, sig_slen);
 
 	/* Reconstruct data that was supposedly signed */
 	if ((original_signed = sshbuf_new()) == NULL) {
