@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/sh
 
 TARGETS=$@
 
@@ -30,7 +30,7 @@ fi
 
 for TARGET in $TARGETS; do
     case $TARGET in
-    default|without-zlib)
+    default|without-zlib|c89)
         # nothing to do
         ;;
     kerberos5)
@@ -69,7 +69,7 @@ for TARGET in $TARGETS; do
     esac
 done
 
-if [ "yes" == "$INSTALL_FIDO_PPA" ]; then
+if [ "yes" = "$INSTALL_FIDO_PPA" ]; then
     sudo apt update -qq
     sudo apt install software-properties-common
     sudo apt-add-repository ppa:yubico/stable

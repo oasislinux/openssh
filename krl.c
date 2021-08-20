@@ -14,7 +14,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-/* $OpenBSD: krl.c,v 1.52 2020/10/18 11:32:01 djm Exp $ */
+/* $OpenBSD: krl.c,v 1.53 2021/06/04 06:19:07 djm Exp $ */
 
 #include "includes.h"
 
