@@ -4,6 +4,7 @@ TARGETS=$@
 
 PACKAGES=""
 BEARSSL_BRANCH="v0.6"
+export DEBIAN_FRONTEND=noninteractive
 
 #echo "Setting up for '$TARGETS'"
 
@@ -71,8 +72,8 @@ done
 
 if [ "yes" = "$INSTALL_FIDO_PPA" ]; then
     sudo apt update -qq
-    sudo apt install software-properties-common
-    sudo apt-add-repository ppa:yubico/stable
+    sudo apt install -qy software-properties-common
+    sudo apt-add-repository -y ppa:yubico/stable
 fi
 
 if [ "x" != "x$PACKAGES" ]; then 
