@@ -252,14 +252,12 @@ cmd_interrupt(int signo)
 	errno = olderrno;
 }
 
-#ifdef USE_LIBEDIT
 /* ARGSUSED */
 static void
 read_interrupt(int signo)
 {
 	interrupted = 1;
 }
-#endif
 
 /*ARGSUSED*/
 static void
