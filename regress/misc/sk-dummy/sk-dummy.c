@@ -24,15 +24,20 @@
 #include <stdio.h>
 #include <stddef.h>
 #include <stdarg.h>
+#ifdef HAVE_SHA2_H
+#include <sha2.h>
+#endif
 
 #include "crypto_api.h"
 #include "sk-api.h"
 
+#ifdef WITH_BEARSSL
 #include <bearssl.h>
+#endif /* WITH_BEARSSL */
 
 /* #define SK_DEBUG 1 */
 
-#if SSH_SK_VERSION_MAJOR != 0x00070000
+#if SSH_SK_VERSION_MAJOR != 0x00090000
 # error SK API has changed, sk-dummy.c needs an update
 #endif
 
@@ -72,6 +77,7 @@ sk_api_version(void)
 static int
 pack_key_ecdsa(struct sk_enroll_response *response)
 {
+#ifdef WITH_BEARSSL
 	br_ec_private_key sk;
 	br_ec_public_key pk;
 	const br_prng_class *rng = &arc4random_prng;
@@ -130,6 +136,9 @@ pack_key_ecdsa(struct sk_enroll_response *response)
 		}
 	}
 	return ret;
+#else
+	return -1;
+#endif
 }
 
 static int
@@ -208,6 +217,7 @@ sk_enroll(uint32_t alg, const uint8_t *challenge, size_t challenge_len,
 		skdebug(__func__, "calloc response failed");
 		goto out;
 	}
+	response->flags = flags;
 	switch(alg) {
 	case SSH_SK_ECDSA:
 		if (pack_key_ecdsa(response) != 0)
@@ -266,6 +276,7 @@ sig_ecdsa(const uint8_t *message, size_t message_len,
     const uint8_t *key_handle, size_t key_handle_len,
     struct sk_sign_response *response)
 {
+#ifdef WITH_BEARSSL
 	int ret = -1;
 	br_sha256_context ctx;
 	br_ec_private_key sk;
@@ -336,6 +347,9 @@ sig_ecdsa(const uint8_t *message, size_t message_len,
 		response->sig_s = NULL;
 	}
 	return ret;
+#else
+	return -1;
+#endif
 }
 
 static int
@@ -346,10 +360,10 @@ sig_ed25519(const uint8_t *message, size_t message_len,
 {
 	size_t o;
 	int ret = -1;
-	br_sha256_context ctx;
-	uint8_t	apphash[br_sha256_SIZE];
+	SHA2_CTX ctx;
+	uint8_t	apphash[SHA256_DIGEST_LENGTH];
 	uint8_t signbuf[sizeof(apphash) + sizeof(flags) +
-	    sizeof(counter) + br_sha256_SIZE];
+	    sizeof(counter) + SHA256_DIGEST_LENGTH];
 	uint8_t sig[crypto_sign_ed25519_BYTES + sizeof(signbuf)];
 	unsigned long long smlen;
 
@@ -358,15 +372,15 @@ sig_ed25519(const uint8_t *message, size_t message_len,
 		goto out;
 	}
 	/* Expect message to be pre-hashed */
-	if (message_len != br_sha256_SIZE) {
+	if (message_len != SHA256_DIGEST_LENGTH) {
 		skdebug(__func__, "bad message len %zu", message_len);
 		goto out;
 	}
 	/* Prepare data to be signed */
 	dump("message", message, message_len);
-	br_sha256_init(&ctx);
-	br_sha256_update(&ctx, application, strlen(application));
-	br_sha256_out(&ctx, apphash);
+	SHA256Init(&ctx);
+	SHA256Update(&ctx, (const u_char *)application, strlen(application));
+	SHA256Final(apphash, &ctx);
 	dump("apphash", apphash, sizeof(apphash));
 
 	memcpy(signbuf, apphash, sizeof(apphash));
@@ -424,7 +438,7 @@ sk_sign(uint32_t alg, const uint8_t *data, size_t datalen,
 {
 	struct sk_sign_response *response = NULL;
 	int ret = SSH_SK_ERR_GENERAL;
-	br_sha256_context ctx;
+	SHA2_CTX ctx;
 	uint8_t message[32];
 
 	if (sign_response == NULL) {
@@ -438,9 +452,9 @@ sk_sign(uint32_t alg, const uint8_t *data, size_t datalen,
 		skdebug(__func__, "calloc response failed");
 		goto out;
 	}
-	br_sha256_init(&ctx);
-	br_sha256_update(&ctx, data, datalen);
-	br_sha256_out(&ctx, message);
+	SHA256Init(&ctx);
+	SHA256Update(&ctx, data, datalen);
+	SHA256Final(message, &ctx);
 	response->flags = flags;
 	response->counter = 0x12345678;
 	switch(alg) {

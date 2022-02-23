@@ -1,5 +1,7 @@
 #!/bin/sh
 
+ . .github/configs $@
+
 TARGETS=$@
 
 PACKAGES=""
@@ -26,23 +28,30 @@ esac
 lsb_release -a
 
 if [ "${TARGETS}" = "kitchensink" ]; then
-	TARGETS="kerberos5 libedit pam sk selinux"
+	TARGETS="krb5 libedit pam sk selinux"
 fi
+
+for flag in $CONFIGFLAGS; do
+    case "$flag" in
+    --with-pam)		PACKAGES="${PACKAGES} libpam0g-dev" ;;
+    --with-libedit)	PACKAGES="${PACKAGES} libedit-dev" ;;
+    esac
+done
 
 for TARGET in $TARGETS; do
     case $TARGET in
-    default|without-zlib|c89)
+    default|without-zlib|c89|libedit|*pam)
         # nothing to do
         ;;
-    kerberos5)
+    clang-*|gcc-*)
+        compiler=$(echo $TARGET | sed 's/-Werror//')
+        PACKAGES="$PACKAGES $compiler"
+        ;;
+    krb5)
+        PACKAGES="$PACKAGES libkrb5-dev"
+	;;
+    heimdal)
         PACKAGES="$PACKAGES heimdal-dev"
-        #PACKAGES="$PACKAGES libkrb5-dev"
-        ;;
-    libedit)
-        PACKAGES="$PACKAGES libedit-dev"
-        ;;
-    *pam)
-        PACKAGES="$PACKAGES libpam0g-dev"
         ;;
     sk)
         INSTALL_FIDO_PPA="yes"
@@ -54,6 +63,12 @@ for TARGET in $TARGETS; do
         ;;
     hardenedmalloc)
         INSTALL_HARDENED_MALLOC=yes
+        ;;
+    musl)
+	PACKAGES="$PACKAGES musl-tools"
+	;;
+    tcmalloc)
+        PACKAGES="$PACKAGES libgoogle-perftools-dev"
         ;;
     bearssl-head)
         BEARSSL_BRANCH="master"
@@ -85,7 +100,7 @@ if [ "${INSTALL_HARDENED_MALLOC}" = "yes" ]; then
     (cd ${HOME} &&
      git clone https://github.com/GrapheneOS/hardened_malloc.git &&
      cd ${HOME}/hardened_malloc &&
-     make -j2 && sudo cp libhardened_malloc.so /usr/lib/)
+     make -j2 && sudo cp out/libhardened_malloc.so /usr/lib/)
 fi
 
 if [ "x" != "x$BEARSSL_BRANCH" ]; then

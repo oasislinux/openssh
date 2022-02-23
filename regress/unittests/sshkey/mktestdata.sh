@@ -164,11 +164,7 @@ ssh-keygen -lf ed25519_2 | awk '{print $2}' > ed25519_2.fp
 ssh-keygen -lf ecdsa_sk2 | awk '{print $2}' > ecdsa_sk2.fp
 ssh-keygen -lf ed25519_sk2 | awk '{print $2}' > ed25519_sk2.fp
 
-<<<<<<< HEAD
-=======
 ssh-keygen -lf rsa_1-cert.pub  | awk '{print $2}' > rsa_1-cert.fp
-ssh-keygen -lf dsa_1-cert.pub  | awk '{print $2}' > dsa_1-cert.fp
->>>>>>> origin/master
 ssh-keygen -lf ecdsa_1-cert.pub  | awk '{print $2}' > ecdsa_1-cert.fp
 ssh-keygen -lf ed25519_1-cert.pub  | awk '{print $2}' > ed25519_1-cert.fp
 ssh-keygen -lf ecdsa_sk1-cert.pub  | awk '{print $2}' > ecdsa_sk1-cert.fp

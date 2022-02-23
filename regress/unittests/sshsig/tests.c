@@ -1,4 +1,4 @@
-/* 	$OpenBSD: tests.c,v 1.2 2020/06/22 06:00:06 djm Exp $ */
+/* 	$OpenBSD: tests.c,v 1.3 2021/12/14 21:25:27 deraadt Exp $ */
 /*
  * Regress test for sshbuf.h buffer API
  *
@@ -8,7 +8,6 @@
 #include "includes.h"
 
 #include <sys/types.h>
-#include <sys/param.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -108,6 +107,7 @@ tests(void)
 	check_sig("ed25519.pub", "ed25519.sig", msg, namespace);
 	TEST_DONE();
 
+#ifdef ENABLE_SK
 #if defined(WITH_BEARSSL)
 	TEST_START("check ECDSA-SK signature");
 	check_sig("ecdsa_sk.pub", "ecdsa_sk.sig", msg, namespace);
@@ -124,6 +124,7 @@ tests(void)
 	    msg, namespace);
  	TEST_DONE();
 #endif
+#endif /* ENABLE_SK */
 
 	sshbuf_free(msg);
 	free(namespace);
