@@ -25,7 +25,9 @@ esac
 
 TARGETS=$@
 
-BEARSSL_BRANCH="v0.6"
+INSTALL_BEARSSL="v0.6"
+INSTALL_FIDO_PPA="no"
+INSTALL_LIBFIDO2="no"
 export DEBIAN_FRONTEND=noninteractive
 
 #echo "Setting up for '$TARGETS'"
@@ -105,10 +107,10 @@ for TARGET in $TARGETS; do
         PACKAGES="$PACKAGES libgoogle-perftools-dev"
         ;;
     bearssl-head)
-        BEARSSL_BRANCH="master"
+        INSTALL_BEARSSL="master"
         ;;
     without-bearssl)
-        BEARSSL_BRANCH=""
+        INSTALL_BEARSSL=""
         ;;
     valgrind*)
         PACKAGES="$PACKAGES valgrind"
@@ -144,7 +146,7 @@ if [ "${INSTALL_HARDENED_MALLOC}" = "yes" ]; then
      make -j2 && sudo cp out/libhardened_malloc.so /usr/lib/)
 fi
 
-if [ "x" != "x$BEARSSL_BRANCH" ]; then
+if [ "x" != "x$INSTALL_BEARSSL" ]; then
     (cd ${HOME} &&
      git clone -b ${BEARSSL_BRANCH} https://bearssl.org/git/BearSSL bearssl &&
      cd bearssl && make -j2 &&
