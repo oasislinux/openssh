@@ -17,7 +17,6 @@ case "`./config.guess`" in
 *-darwin*)
 	PACKAGER=brew
 	brew install automake
-	exit 0
 	;;
 *)
 	PACKAGER=apt
