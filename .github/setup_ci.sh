@@ -1,10 +1,30 @@
 #!/bin/sh
 
+PACKAGES=""
+
  . .github/configs $@
+
+case "`./config.guess`" in
+*cygwin)
+	PACKAGER=setup
+	echo Setting CYGWIN sustem environment variable.
+	setx CYGWIN "binmode"
+	chmod -R go-rw /cygdrive/d/a
+	umask 077
+	PACKAGES="$PACKAGES,autoconf,automake,cygwin-devel,gcc-core"
+	PACKAGES="$PACKAGES,make,zlib-devel"
+	;;
+*-darwin*)
+	PACKAGER=brew
+	brew install automake
+	exit 0
+	;;
+*)
+	PACKAGER=apt
+esac
 
 TARGETS=$@
 
-PACKAGES=""
 BEARSSL_BRANCH="v0.6"
 export DEBIAN_FRONTEND=noninteractive
 
@@ -12,20 +32,17 @@ export DEBIAN_FRONTEND=noninteractive
 
 set -ex
 
-case $(./config.guess) in
-*-darwin*)
-	brew install automake
-	cd ${HOME}
-	git clone -b v0.6 https://bearssl.org/git/BearSSL bearssl
-	cd bearssl
-	make -j2
-	cp build/libbearssl.a /usr/local/lib
-	cp inc/*.h /usr/local/include
-	exit 0
-	;;
-esac
+if [ -x "`which lsb_release 2>&1`" ]; then
+	lsb_release -a
+fi
 
-lsb_release -a
+# Ubuntu 22.04 defaults to private home dirs which prevent the
+# agent-getpeerid test from running ssh-add as nobody.  See
+# https://github.com/actions/runner-images/issues/6106
+if [ ! -z "$SUDO" ] && ! "$SUDO" -u nobody test -x ~; then
+	echo ~ is not executable by nobody, adding perms.
+	chmod go+x ~
+fi
 
 if [ "${TARGETS}" = "kitchensink" ]; then
 	TARGETS="krb5 libedit pam sk selinux"
@@ -33,15 +50,23 @@ fi
 
 for flag in $CONFIGFLAGS; do
     case "$flag" in
-    --with-pam)		PACKAGES="${PACKAGES} libpam0g-dev" ;;
-    --with-libedit)	PACKAGES="${PACKAGES} libedit-dev" ;;
+    --with-pam)		TARGETS="${TARGETS} pam" ;;
+    --with-libedit)	TARGETS="${TARGETS} libedit" ;;
     esac
 done
 
 for TARGET in $TARGETS; do
     case $TARGET in
-    default|without-zlib|c89|libedit|*pam)
+    default|without-zlib|c89)
         # nothing to do
+        ;;
+    clang-sanitize*)
+        PACKAGES="$PACKAGES clang-12"
+        ;;
+    cygwin-release)
+        PACKAGES="$PACKAGES libcrypt-devel libfido2-devel libkrb5-devel"
+        ;;
+    gcc-sanitize*)
         ;;
     clang-*|gcc-*)
         compiler=$(echo $TARGET | sed 's/-Werror//')
@@ -52,6 +77,15 @@ for TARGET in $TARGETS; do
 	;;
     heimdal)
         PACKAGES="$PACKAGES heimdal-dev"
+        ;;
+    libedit)
+	case "$PACKAGER" in
+	setup)	PACKAGES="$PACKAGES libedit-devel" ;;
+	apt)	PACKAGES="$PACKAGES libedit-dev" ;;
+	esac
+        ;;
+    *pam)
+        PACKAGES="$PACKAGES libpam0g-dev"
         ;;
     sk)
         INSTALL_FIDO_PPA="yes"
@@ -91,9 +125,16 @@ if [ "yes" = "$INSTALL_FIDO_PPA" ]; then
     sudo apt-add-repository -y ppa:yubico/stable
 fi
 
-if [ "x" != "x$PACKAGES" ]; then 
-    sudo apt update -qq
-    sudo apt install -qy $PACKAGES
+if [ "x" != "x$PACKAGES" ]; then
+    case "$PACKAGER" in
+    apt)
+	sudo apt update -qq
+	sudo apt install -qy $PACKAGES
+	;;
+    setup)
+	/cygdrive/c/setup.exe -q -P `echo "$PACKAGES" | tr ' ' ,`
+	;;
+    esac
 fi
 
 if [ "${INSTALL_HARDENED_MALLOC}" = "yes" ]; then

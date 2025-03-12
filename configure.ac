@@ -16,6 +16,14 @@
 AC_INIT([OpenSSH], [Portable], [openssh-unix-dev@mindrot.org])
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_SRCDIR([ssh.c])
+
+# Check for stale configure as early as possible.
+for i in $srcdir/configure.ac $srcdir/m4/*.m4; do
+	if test "$i" -nt "$srcdir/configure"; then
+		AC_MSG_ERROR([$i newer than configure, run autoreconf])
+	fi
+done
+
 AC_LANG([C])
 
 AC_CONFIG_HEADERS([config.h])
@@ -54,6 +62,7 @@ AC_PATH_PROG([SH], [sh])
 AC_PATH_PROG([GROFF], [groff])
 AC_PATH_PROG([NROFF], [nroff awf])
 AC_PATH_PROG([MANDOC], [mandoc])
+AC_PATH_TOOL([PKGCONFIG], [pkg-config], [no])
 AC_SUBST([TEST_SHELL], [sh])
 
 dnl select manpage formatter to be used to build "cat" format pages.
@@ -504,11 +513,23 @@ AC_CHECK_HEADERS([sys/audit.h], [], [], [
 ])
 
 # sys/capsicum.h requires sys/types.h
-AC_CHECK_HEADERS([sys/capsicum.h], [], [], [
+AC_CHECK_HEADERS([sys/capsicum.h capsicum_helpers.h], [], [], [
 #ifdef HAVE_SYS_TYPES_H
 # include <sys/types.h>
 #endif
 ])
+
+AC_MSG_CHECKING([for caph_cache_tzdata])
+AC_LINK_IFELSE(
+    [AC_LANG_PROGRAM([[ #include <capsicum_helpers.h> ]],
+	[[caph_cache_tzdata();]])],
+    [
+	AC_MSG_RESULT([yes])
+	AC_DEFINE([HAVE_CAPH_CACHE_TZDATA], [1],
+	    [Define if you have caph_cache_tzdata])
+    ],
+    [ AC_MSG_RESULT([no]) ]
+)
 
 # net/route.h requires sys/socket.h and sys/types.h.
 # sys/sysctl.h also requires sys/param.h
@@ -661,7 +682,6 @@ case "$host" in
 	AC_DEFINE([DISABLE_WTMP], [1], [Define if you don't want to use wtmp])
 	;;
 *-*-cygwin*)
-	check_for_libcrypt_later=1
 	LIBS="$LIBS /usr/lib/textreadmode.o"
 	AC_DEFINE([HAVE_CYGWIN], [1], [Define if you are on Cygwin])
 	AC_DEFINE([USE_PIPES], [1], [Use PIPES instead of a socketpair()])
@@ -740,7 +760,7 @@ main() { if (NSVersionOfRunTimeLibrary("System") >= (60 << 16))
 	    [System poll(2) implementation is broken])
 	;;
 *-*-dragonfly*)
-	SSHDLIBS="$SSHDLIBS -lcrypt"
+	SSHDLIBS="$SSHDLIBS"
 	TEST_MALLOC_OPTIONS="AFGJPRX"
 	;;
 *-*-haiku*)
@@ -831,7 +851,6 @@ main() { if (NSVersionOfRunTimeLibrary("System") >= (60 << 16))
 	AC_DEFINE([LOCKED_PASSWD_STRING], ["*LK*"])
 	;;
 *-*-k*bsd*-gnu | *-*-kopensolaris*-gnu)
-	check_for_libcrypt_later=1
 	AC_DEFINE([PAM_TTY_KLUDGE])
 	AC_DEFINE([LOCKED_PASSWD_PREFIX], ["!"])
 	AC_DEFINE([SPT_TYPE], [SPT_REUSEARGV])
@@ -841,7 +860,6 @@ main() { if (NSVersionOfRunTimeLibrary("System") >= (60 << 16))
 *-*-linux*)
 	no_dev_ptmx=1
 	use_pie=auto
-	check_for_libcrypt_later=1
 	check_for_openpty_ctty_bug=1
 	dnl Target SUSv3/POSIX.1-2001 plus BSD specifics.
 	dnl _DEFAULT_SOURCE is the new name for _BSD_SOURCE
@@ -926,6 +944,9 @@ main() { if (NSVersionOfRunTimeLibrary("System") >= (60 << 16))
 	s390-*)
 		seccomp_audit_arch=AUDIT_ARCH_S390
 		;;
+	powerpc-*)
+		seccomp_audit_arch=AUDIT_ARCH_PPC
+		;;
 	powerpc64-*)
 		seccomp_audit_arch=AUDIT_ARCH_PPC64
 		;;
@@ -981,7 +1002,6 @@ mips-sony-bsd|mips-sony-newsos4)
 	SONY=1
 	;;
 *-*-netbsd*)
-	check_for_libcrypt_before=1
 	if test "x$withval" != "xno" ; then
 		rpath_opt="-R"
 	fi
@@ -996,7 +1016,6 @@ mips-sony-bsd|mips-sony-newsos4)
 	    [NetBSD read function is sometimes redirected, breaking atomicio comparisons against it])
 	;;
 *-*-freebsd*)
-	check_for_libcrypt_later=1
 	AC_DEFINE([LOCKED_PASSWD_PREFIX], ["*LOCKED*"], [Account locked with pw(1)])
 	AC_DEFINE([SSH_TUN_FREEBSD], [1], [Open tunnel devices the FreeBSD way])
 	AC_CHECK_HEADER([net/if_tap.h], ,
@@ -1169,7 +1188,6 @@ mips-sony-bsd|mips-sony-newsos4)
 	AC_DEFINE([PASSWD_NEEDS_USERNAME])
 	AC_DEFINE([BROKEN_TCGETATTR_ICANON])
 	TEST_SHELL=$SHELL	# let configure find us a capable shell
-	check_for_libcrypt_later=1
 	case "$host" in
 	*-*-sysv5SCO_SV*)	# SCO OpenServer 6.x
 		maildir=/var/spool/mail
@@ -1378,18 +1396,21 @@ AC_ARG_WITH([zlib],
 	fi ]
 )
 
+# These libraries are needed for anything that links in the channel code.
+CHANNELLIBS=""
 AC_MSG_CHECKING([for zlib])
 if test "x${zlib}" = "xno"; then
 	AC_MSG_RESULT([no])
 else
-	AC_MSG_RESULT([yes])
-	AC_DEFINE([WITH_ZLIB], [1], [Enable zlib])
+    saved_LIBS="$LIBS"
+    CHANNELLIBS="$CHANNELLIBS -lz"
+    AC_MSG_RESULT([yes])
+    AC_DEFINE([WITH_ZLIB], [1], [Enable zlib])
     AC_CHECK_HEADER([zlib.h], ,[AC_MSG_ERROR([*** zlib.h missing - please install first or check config.log ***])])
-    AC_CHECK_LIB([z], [deflate], ,
+    AC_CHECK_LIB([z], [deflate], [],
 	[
 		saved_CPPFLAGS="$CPPFLAGS"
 		saved_LDFLAGS="$LDFLAGS"
-		save_LIBS="$LIBS"
 		dnl Check default zlib install dir
 		if test -n "${rpath_opt}"; then
 			LDFLAGS="-L/usr/local/lib ${rpath_opt}/usr/local/lib ${saved_LDFLAGS}"
@@ -1397,7 +1418,6 @@ else
 			LDFLAGS="-L/usr/local/lib ${saved_LDFLAGS}"
 		fi
 		CPPFLAGS="-I/usr/local/include ${saved_CPPFLAGS}"
-		LIBS="$LIBS -lz"
 		AC_TRY_LINK_FUNC([deflate], [AC_DEFINE([HAVE_LIBZ])],
 			[
 				AC_MSG_ERROR([*** zlib missing - please install first or check config.log ***])
@@ -1454,6 +1474,7 @@ See http://www.gzip.org/zlib/ for details.])
 	],
 	[	AC_MSG_WARN([cross compiling: not checking zlib version]) ]
     )
+    LIBS="$saved_LIBS"
 fi
 
 dnl UnixWare 2.x
@@ -1654,7 +1675,6 @@ AC_ARG_WITH([libedit],
 	[  --with-libedit[[=PATH]]   Enable libedit support for sftp],
 	[ if test "x$withval" != "xno" ; then
 		if test "x$withval" = "xyes" ; then
-			AC_PATH_TOOL([PKGCONFIG], [pkg-config], [no])
 			if test "x$PKGCONFIG" != "xno"; then
 				AC_MSG_CHECKING([if $PKGCONFIG knows about libedit])
 				if "$PKGCONFIG" libedit; then
@@ -1859,6 +1879,7 @@ AC_CHECK_FUNCS([ \
 	futimes \
 	getaddrinfo \
 	getcwd \
+	getentropy \
 	getgrouplist \
 	getline \
 	getnameinfo \
@@ -1946,6 +1967,7 @@ AC_CHECK_FUNCS([ \
 	swap32 \
 	sysconf \
 	tcgetpgrp \
+	timegm \
 	timingsafe_bcmp \
 	truncate \
 	unsetenv \
@@ -2011,13 +2033,8 @@ AC_ARG_ENABLE([security-key],
 enable_sk_internal=
 AC_ARG_WITH([security-key-builtin],
 	[  --with-security-key-builtin include builtin U2F/FIDO support],
-	[
-		if test "x$withval" != "xno" ; then
-			enable_sk_internal=yes
-		fi
-	]
+	[ enable_sk_internal=$withval ]
 )
-test "x$disable_sk" != "x" && enable_sk_internal=""
 
 AC_SEARCH_LIBS([dlopen], [dl])
 AC_CHECK_FUNCS([dlopen])
@@ -2095,7 +2112,7 @@ AC_CHECK_DECLS([O_NONBLOCK], , ,
 #endif
 	])
 
-AC_CHECK_DECLS([ftruncate], , ,
+AC_CHECK_DECLS([ftruncate, getentropy], , ,
 	[
 #include <sys/types.h>
 #include <unistd.h>
@@ -2638,16 +2655,15 @@ AC_CHECK_FUNCS([getpgrp],[
 ])
 
 # Search for BearSSL
+nocrypto_saved_LIBS="$LIBS"
 if test "x$bearssl" = "xyes" ; then
 	LIBS="-lbearssl $LIBS"
+	CHANNELLIBS="-lbearssl $CHANNELLIBS"
 	AC_TRY_LINK_FUNC([br_sha256_init], ,
 	    [AC_MSG_ERROR([*** working BearSSL not found, check config.log])])
 	AC_CHECK_HEADER([bearssl.h], ,
 	    [AC_MSG_ERROR([*** BearSSL headers missing - please install first or check config.log ***])])
 fi
-
-AC_CHECK_LIB([crypt], [crypt], [LIBS="$LIBS -lcrypt"])
-AC_CHECK_FUNCS([crypt])
 
 # PKCS11/U2F depend on OpenSSL and dlopen().
 enable_pkcs11="disabled; missing libcrypto"
@@ -2684,8 +2700,7 @@ fi
 AC_MSG_RESULT([$enable_sk])
 
 # Now check for built-in security key support.
-if test "x$enable_sk" = "xyes" -a "x$enable_sk_internal" = "xyes" ; then
-	AC_PATH_TOOL([PKGCONFIG], [pkg-config], [no])
+if test "x$enable_sk" = "xyes" -a "x$enable_sk_internal" != "xno" ; then
 	use_pkgconfig_for_libfido2=
 	if test "x$PKGCONFIG" != "xno"; then
 		AC_MSG_CHECKING([if $PKGCONFIG knows about libfido2])
@@ -2703,33 +2718,45 @@ if test "x$enable_sk" = "xyes" -a "x$enable_sk_internal" = "xyes" ; then
 		LIBFIDO2="-lfido2 -lcbor"
 	fi
 	OTHERLIBS=`echo $LIBFIDO2 | sed 's/-lfido2//'`
+	fido2_error=
 	AC_CHECK_LIB([fido2], [fido_init],
-		[
-			AC_SUBST([LIBFIDO2])
-			AC_DEFINE([ENABLE_SK_INTERNAL], [],
-			    [Enable for built-in U2F/FIDO support])
-			enable_sk="built-in"
-		], [ AC_MSG_ERROR([no usable libfido2 found]) ],
+		[ ],
+		[ fido2_error="missing/unusable libfido2" ],
 		[ $OTHERLIBS ]
 	)
-	saved_LIBS="$LIBS"
-	LIBS="$LIBS $LIBFIDO2"
-	AC_CHECK_FUNCS([ \
-		fido_assert_set_clientdata \
-		fido_cred_prot \
-		fido_cred_set_prot \
-		fido_cred_set_clientdata \
-		fido_dev_get_touch_begin \
-		fido_dev_get_touch_status \
-		fido_dev_supports_cred_prot \
-	])
-	LIBS="$saved_LIBS"
 	AC_CHECK_HEADER([fido.h], [],
-		AC_MSG_ERROR([missing fido.h from libfido2]))
+		[ fido2_error="missing fido.h from libfido2" ])
 	AC_CHECK_HEADER([fido/credman.h], [],
-		AC_MSG_ERROR([missing fido/credman.h from libfido2]),
-		[#include <fido.h>]
+		[ fido2_error="missing fido/credman.h from libfido2" ],
+		[ #include <fido.h> ]
 	)
+	AC_MSG_CHECKING([for usable libfido2 installation])
+	if test ! -z "$fido2_error" ; then
+		AC_MSG_RESULT([$fido2_error])
+		if test "x$enable_sk_internal" = "xyes" ; then
+			AC_MSG_ERROR([No usable libfido2 library/headers found])
+		fi
+		LIBFIDO2=""
+	else
+		AC_MSG_RESULT([yes])
+		AC_SUBST([LIBFIDO2])
+		AC_DEFINE([ENABLE_SK_INTERNAL], [],
+		    [Enable for built-in U2F/FIDO support])
+		enable_sk="built-in"
+		saved_LIBS="$LIBS"
+		LIBS="$LIBS $LIBFIDO2"
+		AC_CHECK_FUNCS([ \
+			fido_assert_set_clientdata \
+			fido_cred_prot \
+			fido_cred_set_prot \
+			fido_cred_set_clientdata \
+			fido_dev_get_touch_begin \
+			fido_dev_get_touch_status \
+			fido_dev_supports_cred_prot \
+			fido_dev_is_winhello \
+		])
+		LIBS="$saved_LIBS"
+	fi
 fi
 
 AC_CHECK_FUNCS([ \
@@ -2738,6 +2765,11 @@ AC_CHECK_FUNCS([ \
 	arc4random_stir \
 	arc4random_uniform \
 ])
+### Configure cryptographic random number support
+
+# Which randomness source do we use?
+AC_MSG_WARN([OpenSSH will use /dev/urandom as a source of random numbers. It will fail if this device is not supported or accessible])
+LIBS="$nocrypto_saved_LIBS"
 
 saved_LIBS="$LIBS"
 AC_CHECK_LIB([iaf], [ia_openinfo], [
@@ -2749,10 +2781,14 @@ AC_CHECK_LIB([iaf], [ia_openinfo], [
 ])
 LIBS="$saved_LIBS"
 
-### Configure cryptographic random number support
-
-# Which randomness source do we use?
-AC_MSG_WARN([OpenSSH will use /dev/urandom as a source of random numbers. It will fail if this device is not supported or accessible])
+# Check for crypt() in libcrypt.  If we have it, we only need it for sshd.
+saved_LIBS="$LIBS"
+AC_CHECK_LIB([crypt], [crypt], [
+	LIBS="-lcrypt $LIBS"
+	SSHDLIBS="-lcrypt $SSHDLIBS"
+])
+AC_CHECK_FUNCS([crypt])
+LIBS="$saved_LIBS"
 
 # Check for PAM libs
 PAM_MSG="no"
@@ -2880,6 +2916,26 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM([[
 )
 fi
 
+AC_CHECK_MEMBERS([struct pollfd.fd], [], [], [[
+#include <sys/types.h>
+#ifdef HAVE_POLL_H
+#include <poll.h>
+#endif
+#ifdef HAVE_SYS_POLL_H
+#include <sys/poll.h>
+#endif
+]])
+
+AC_CHECK_TYPES([nfds_t], , , [
+#include <sys/types.h>
+#ifdef HAVE_POLL_H
+#include <poll.h>
+#endif
+#ifdef HAVE_SYS_POLL_H
+#include <sys/poll.h>
+#endif
+])
+
 # Decide which sandbox style to use
 sandbox_arg=""
 AC_ARG_WITH([sandbox],
@@ -2893,12 +2949,13 @@ AC_ARG_WITH([sandbox],
 	]
 )
 
+if test "x$sandbox_arg" != "xno"; then
 # POSIX specifies that poll() "shall fail with EINVAL if the nfds argument
 # is greater than OPEN_MAX".  On some platforms that includes implementions
-# ofselect in userspace on top of poll() so check both work with rlimit NOFILES
-# so check that both work before enabling the rlimit sandbox.
-AC_MSG_CHECKING([if select and/or poll works with descriptor rlimit])
-AC_RUN_IFELSE(
+# of select in userspace on top of poll() so check both work with rlimit
+# NOFILES so check that both work before enabling the rlimit sandbox.
+    AC_MSG_CHECKING([if select and/or poll works with descriptor rlimit])
+    AC_RUN_IFELSE(
 	[AC_LANG_PROGRAM([[
 #include <sys/types.h>
 #ifdef HAVE_SYS_TIME_H
@@ -2951,30 +3008,10 @@ AC_RUN_IFELSE(
 	 select_works_with_rlimit=no],
 	[AC_MSG_WARN([cross compiling: assuming no])
 	 select_works_with_rlimit=no]
-)
+    )
 
-AC_CHECK_MEMBERS([struct pollfd.fd], [], [], [[
-#include <sys/types.h>
-#ifdef HAVE_POLL_H
-#include <poll.h>
-#endif
-#ifdef HAVE_SYS_POLL_H
-#include <sys/poll.h>
-#endif
-]])
-
-AC_CHECK_TYPES([nfds_t], , , [
-#include <sys/types.h>
-#ifdef HAVE_POLL_H
-#include <poll.h>
-#endif
-#ifdef HAVE_SYS_POLL_H
-#include <sys/poll.h>
-#endif
-])
-
-AC_MSG_CHECKING([if setrlimit(RLIMIT_NOFILE,{0,0}) works])
-AC_RUN_IFELSE(
+    AC_MSG_CHECKING([if setrlimit(RLIMIT_NOFILE,{0,0}) works])
+    AC_RUN_IFELSE(
 	[AC_LANG_PROGRAM([[
 #include <sys/types.h>
 #ifdef HAVE_SYS_TIME_H
@@ -2997,10 +3034,10 @@ AC_RUN_IFELSE(
 	 rlimit_nofile_zero_works=no],
 	[AC_MSG_WARN([cross compiling: assuming yes])
 	 rlimit_nofile_zero_works=yes]
-)
+    )
 
-AC_MSG_CHECKING([if setrlimit RLIMIT_FSIZE works])
-AC_RUN_IFELSE(
+    AC_MSG_CHECKING([if setrlimit RLIMIT_FSIZE works])
+    AC_RUN_IFELSE(
 	[AC_LANG_PROGRAM([[
 #include <sys/types.h>
 #include <sys/resource.h>
@@ -3016,7 +3053,8 @@ AC_RUN_IFELSE(
 	 AC_DEFINE(SANDBOX_SKIP_RLIMIT_FSIZE, 1,
 	    [setrlimit RLIMIT_FSIZE works])],
 	[AC_MSG_WARN([cross compiling: assuming yes])]
-)
+    )
+fi
 
 if test "x$sandbox_arg" = "xpledge" || \
    ( test -z "$sandbox_arg" && test "x$ac_cv_func_pledge" = "xyes" ) ; then
@@ -4021,7 +4059,6 @@ AC_ARG_WITH([kerberos5],
 		AC_DEFINE([KRB5], [1], [Define if you want Kerberos 5 support])
 		KRB5_MSG="yes"
 
-		AC_PATH_TOOL([PKGCONFIG], [pkg-config], [no])
 		use_pkgconfig_for_krb5=
 		if test "x$PKGCONFIG" != "xno"; then
 			AC_MSG_CHECKING([if $PKGCONFIG knows about kerberos5])
@@ -4173,6 +4210,7 @@ AC_ARG_WITH([kerberos5],
 )
 AC_SUBST([GSSLIBS])
 AC_SUBST([K5LIBS])
+AC_SUBST([CHANNELLIBS])
 
 # Looking for programs, paths and files
 
@@ -4990,6 +5028,12 @@ echo "    Compiler flags: ${CFLAGS}"
 echo "Preprocessor flags: ${CPPFLAGS}"
 echo "      Linker flags: ${LDFLAGS}"
 echo "         Libraries: ${LIBS}"
+if test ! -z "${CHANNELLIBS}"; then
+echo "     +for channels: ${CHANNELLIBS}"
+fi
+if test ! -z "${LIBFIDO2}"; then
+echo "        +for FIDO2: ${LIBFIDO2}"
+fi
 if test ! -z "${SSHDLIBS}"; then
 echo "         +for sshd: ${SSHDLIBS}"
 fi
