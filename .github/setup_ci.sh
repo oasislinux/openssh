@@ -18,7 +18,7 @@ case "$host" in
 	;;
 *-darwin*)
 	PACKAGER=brew
-	brew install automake
+	PACKAGES="automake"
 	;;
 *)
 	PACKAGER=apt
@@ -31,20 +31,30 @@ INSTALL_FIDO_PPA="no"
 INSTALL_LIBFIDO2="no"
 export DEBIAN_FRONTEND=noninteractive
 
-#echo "Setting up for '$TARGETS'"
-
-set -ex
+set -e
 
 if [ -x "`which lsb_release 2>&1`" ]; then
 	lsb_release -a
 fi
 
-# Ubuntu 22.04 defaults to private home dirs which prevent the
-# agent-getpeerid test from running ssh-add as nobody.  See
-# https://github.com/actions/runner-images/issues/6106
-if [ ! -z "$SUDO" ] && ! "$SUDO" -u nobody test -x ~; then
-	echo ~ is not executable by nobody, adding perms.
-	chmod go+x ~
+if [ ! -z "$SUDO" ]; then
+	# Ubuntu 22.04 defaults to private home dirs which prevent the
+	# agent-getpeerid test from running ssh-add as nobody.  See
+	# https://github.com/actions/runner-images/issues/6106
+	if ! "$SUDO" -u nobody test -x ~; then
+		echo ~ is not executable by nobody, adding perms.
+		chmod go+x ~
+	fi
+	# Some of the Mac OS X runners don't have a nopasswd sudo rule. Regular
+	# sudo still works, but sudo -u doesn't.  Restore the sudo rule.
+	if ! "$SUDO" grep  -E 'runner.*NOPASSWD' /etc/passwd >/dev/null; then
+		echo "Restoring runner nopasswd rule to sudoers."
+		echo 'runner ALL=(ALL) NOPASSWD: ALL' |$SUDO tee -a /etc/sudoers
+	fi
+	if ! "$SUDO" -u nobody -S test -x ~ </dev/null; then
+		echo "Still can't sudo to nobody."
+		exit 1
+	fi
 fi
 
 if [ "${TARGETS}" = "kitchensink" ]; then
@@ -58,6 +68,7 @@ for flag in $CONFIGFLAGS; do
     esac
 done
 
+echo "Setting up for '$TARGETS'"
 for TARGET in $TARGETS; do
     case $TARGET in
     default|without-zlib|c89)
@@ -88,7 +99,9 @@ for TARGET in $TARGETS; do
 	esac
         ;;
     *pam)
-        PACKAGES="$PACKAGES libpam0g-dev"
+	case "$PACKAGER" in
+	apt)	PACKAGES="$PACKAGES libpam0g-dev" ;;
+	esac
         ;;
     sk)
         INSTALL_FIDO_PPA="yes"
@@ -139,6 +152,13 @@ while [ ! -z "$PACKAGES" ] && [ "$tries" -gt "0" ]; do
 		PACKAGES=""
 	fi
 	;;
+    brew)
+	if [ ! -z "PACKAGES" ]; then
+		if brew install $PACKAGES; then
+			PACKAGES=""
+		fi
+	fi
+	;;
     setup)
 	if /cygdrive/c/setup.exe -q -P `echo "$PACKAGES" | tr ' ' ,`; then
 		PACKAGES=""
@@ -159,7 +179,7 @@ if [ "${INSTALL_HARDENED_MALLOC}" = "yes" ]; then
     (cd ${HOME} &&
      git clone https://github.com/GrapheneOS/hardened_malloc.git &&
      cd ${HOME}/hardened_malloc &&
-     make -j2 && sudo cp out/libhardened_malloc.so /usr/lib/)
+     make && sudo cp out/libhardened_malloc.so /usr/lib/)
 fi
 
 if [ "x" != "x$INSTALL_BEARSSL" ]; then

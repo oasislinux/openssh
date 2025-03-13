@@ -189,10 +189,11 @@ if test "$GCC" = "yes" || test "$GCC" = "egcs"; then
 	AC_MSG_CHECKING([clang version])
 	ver="`$CC -v 2>&1`"
 	if echo "$ver" | grep "Apple" >/dev/null; then
-		CLANG_VER="apple-`echo "$ver" | \
-		    awk '/Apple LLVM/ {print $4"-"$5}'`"
+		CLANG_VER=apple-`echo "$ver" | grep 'clang version' | \
+		    $SED 's/.*clang version //g' | $AWK '{print $1}'`
 	else
-		CLANG_VER=`echo "$ver" | $AWK '/clang version /{print $3}'`
+		CLANG_VER=`echo "$ver" | grep 'clang version' | \
+		    $SED 's/.*clang version //g' | $AWK '{print $1}'`
 	fi
 	AC_MSG_RESULT([$CLANG_VER])
 
@@ -230,9 +231,12 @@ if test "$GCC" = "yes" || test "$GCC" = "egcs"; then
 	# clang 15 seems to have a bug in -fzero-call-used-regs=all.  See
 	# https://bugzilla.mindrot.org/show_bug.cgi?id=3475 and
 	# https://github.com/llvm/llvm-project/issues/59242
+	# clang 17 has a different bug that causes an ICE when using this
+	# flag at all (https://bugzilla.mindrot.org/show_bug.cgi?id=3629)
 	case "$CLANG_VER" in
-	15.*|apple*) OSSH_CHECK_CFLAG_COMPILE([-fzero-call-used-regs=used]) ;;
-	*)    OSSH_CHECK_CFLAG_COMPILE([-fzero-call-used-regs=all]) ;;
+	apple-15*) OSSH_CHECK_CFLAG_LINK([-fzero-call-used-regs=used]) ;;
+	17*)	;;
+	*)	OSSH_CHECK_CFLAG_LINK([-fzero-call-used-regs=used]) ;;
 	esac
 	OSSH_CHECK_CFLAG_COMPILE([-ftrivial-auto-var-init=zero])
     fi
@@ -4993,6 +4997,15 @@ AC_SUBST([TEST_MALLOC_OPTIONS], [$TEST_MALLOC_OPTIONS])
 AC_SUBST([UNSUPPORTED_ALGORITHMS], [$unsupported_algorithms])
 AC_SUBST_FILE([DEPEND])
 DEPEND=$srcdir/.depend
+
+# Binaries for interop tests.
+AC_PATH_PROG([PLINK], [plink])
+AC_PATH_PROG([PUTTYGEN], [puttygen])
+AC_PATH_PROG([CONCH], [conch])
+AC_PATH_PROG([DROPBEAR], [dropbear])
+AC_PATH_PROG([DBCLIENT], [dbclient])
+AC_PATH_PROG([DROPBEARKEY], [dropbearkey])
+AC_PATH_PROG([DROPBEARCONVERT], [dropbearconvert])
 
 CFLAGS="${CFLAGS} ${CFLAGS_AFTER}"
 LDFLAGS="${LDFLAGS} ${LDFLAGS_AFTER}"

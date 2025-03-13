@@ -1,4 +1,4 @@
-/* $OpenBSD: cipher.c,v 1.119 2021/04/03 06:18:40 djm Exp $ */
+/* $OpenBSD: cipher.c,v 1.120 2023/10/10 06:49:54 tb Exp $ */
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
  * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
@@ -420,11 +420,6 @@ cipher_free(struct sshcipher_ctx *cc)
 	freezero(cc, sizeof(*cc));
 }
 
-/*
- * Exports an IV from the sshcipher_ctx required to export the key
- * state back from the unprivileged child to the privileged parent
- * process.
- */
 int
 cipher_get_keyiv(struct sshcipher_ctx *cc, u_char *iv, size_t len)
 {

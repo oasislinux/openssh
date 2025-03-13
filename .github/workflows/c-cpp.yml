@@ -47,7 +47,8 @@ jobs:
           - { target: ubuntu-20.04, config: gcc-7 }
           - { target: ubuntu-20.04, config: gcc-8 }
           - { target: ubuntu-20.04, config: gcc-10 }
-          - { target: ubuntu-20.04, config: gcc-11-Werror }
+          - { target: ubuntu-22.04, config: gcc-11-Werror }
+          - { target: ubuntu-22.04, config: gcc-12-Werror }
           - { target: ubuntu-20.04, config: pam }
           - { target: ubuntu-20.04, config: kitchensink }
           - { target: ubuntu-22.04, config: hardenedmalloc }
@@ -89,7 +90,7 @@ jobs:
     - name: make clean
       run: make clean
     - name: make
-      run: make -j2
+      run: make
     - name: make tests
       run: sh ./.github/run_test.sh ${{ matrix.config }}
       env:

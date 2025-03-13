@@ -1,4 +1,4 @@
-/* $OpenBSD: sshkey.c,v 1.138 2023/08/21 04:36:46 djm Exp $ */
+/* $OpenBSD: sshkey.c,v 1.140 2023/10/16 08:40:00 dtucker Exp $ */
 /*
  * Copyright (c) 2000, 2001 Markus Friedl.  All rights reserved.
  * Copyright (c) 2008 Alexander von Gernler.  All rights reserved.
@@ -3389,7 +3389,6 @@ sshkey_parse_private_fileblob_type(struct sshbuf *blob, int type,
 		*commentp = NULL;
 
 	switch (type) {
-	case KEY_ED25519:
 	case KEY_XMSS:
 		/* No fallback for new-format-only keys */
 		return sshkey_parse_private2(blob, type, passphrase,

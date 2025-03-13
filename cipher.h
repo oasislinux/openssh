@@ -1,4 +1,4 @@
-/* $OpenBSD: cipher.h,v 1.55 2020/01/23 10:24:29 dtucker Exp $ */
+/* $OpenBSD: cipher.h,v 1.56 2023/10/10 06:49:54 tb Exp $ */
 
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
