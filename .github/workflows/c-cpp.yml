@@ -54,6 +54,7 @@ jobs:
           - { target: ubuntu-20.04, config: tcmalloc }
           - { target: ubuntu-20.04, config: musl }
           - { target: ubuntu-latest, config: bearssl-head }
+          - { target: ubuntu-latest, config: zlib-develop }
           - { target: ubuntu-22.04, config: pam }
           - { target: ubuntu-22.04, config: krb5 }
           - { target: ubuntu-22.04, config: heimdal }

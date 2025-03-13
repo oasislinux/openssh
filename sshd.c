@@ -1679,7 +1679,7 @@ main(int ac, char **av)
 			break;
 		case 'V':
 			fprintf(stderr, "%s, %s\n",
-			    SSH_VERSION, SSH_BEARSSL_VERSION);
+			    SSH_RELEASE, SSH_BEARSSL_VERSION);
 			exit(0);
 		default:
 			usage();

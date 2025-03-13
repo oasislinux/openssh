@@ -116,6 +116,8 @@ for TARGET in $TARGETS; do
     valgrind*)
         PACKAGES="$PACKAGES valgrind"
         ;;
+    zlib-*)
+        ;;
     *) echo "Invalid option '${TARGET}'"
         exit 1
         ;;
@@ -173,4 +175,10 @@ if [ "x$INSTALL_LIBFIDO2" = "xyes" ]; then
      git clone https://github.com/oasislinux/libfido2.git &&
      cd libfido2 && cmake -DCMAKE_INSTALL_PREFIX=/usr . &&
      make -j2 && sudo make install)
+fi
+
+if [ ! -z "${INSTALL_ZLIB}" ]; then
+    (cd ${HOME} && git clone https://github.com/madler/zlib.git &&
+     cd ${HOME}/zlib && ./configure && make &&
+     sudo make install prefix=/opt/zlib)
 fi
