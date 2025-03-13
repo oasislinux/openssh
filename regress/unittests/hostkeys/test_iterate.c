@@ -1,4 +1,4 @@
-/* 	$OpenBSD: test_iterate.c,v 1.8 2021/12/14 21:25:27 deraadt Exp $ */
+/* 	$OpenBSD: test_iterate.c,v 1.9 2024/01/11 01:45:58 djm Exp $ */
 /*
  * Regress test for hostfile.h hostkeys_foreach()
  *

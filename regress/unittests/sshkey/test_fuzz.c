@@ -1,4 +1,4 @@
-/* 	$OpenBSD: test_fuzz.c,v 1.13 2021/12/14 21:25:27 deraadt Exp $ */
+/* 	$OpenBSD: test_fuzz.c,v 1.14 2024/01/11 01:45:58 djm Exp $ */
 /*
  * Fuzz tests for key parsing
  *

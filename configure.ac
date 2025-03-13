@@ -149,6 +149,7 @@ fi
 
 use_stack_protector=1
 use_toolchain_hardening=1
+use_retpoline=1
 AC_ARG_WITH([stackprotect],
     [  --without-stackprotect  Don't use compiler's stack protection], [
     if test "x$withval" = "xno"; then
@@ -158,6 +159,11 @@ AC_ARG_WITH([hardening],
     [  --without-hardening     Don't use toolchain hardening flags], [
     if test "x$withval" = "xno"; then
 	use_toolchain_hardening=0
+    fi ])
+AC_ARG_WITH([retpoline],
+    [  --without-retpoline     Enable retpoline spectre mitigation], [
+    if test "x$withval" = "xno"; then
+	use_retpoline=0
     fi ])
 
 # We use -Werror for the tests only so that we catch warnings like "this is
@@ -216,8 +222,6 @@ if test "$GCC" = "yes" || test "$GCC" = "egcs"; then
 	OSSH_CHECK_CFLAG_COMPILE([-Wbitwise-instead-of-logical])
 	OSSH_CHECK_CFLAG_COMPILE([-fno-strict-aliasing])
     if test "x$use_toolchain_hardening" = "x1"; then
-	OSSH_CHECK_CFLAG_COMPILE([-mretpoline]) # clang
-	OSSH_CHECK_LDFLAG_LINK([-Wl,-z,retpolineplt])
 	OSSH_CHECK_CFLAG_COMPILE([-D_FORTIFY_SOURCE=2])
 	OSSH_CHECK_LDFLAG_LINK([-Wl,-z,relro])
 	OSSH_CHECK_LDFLAG_LINK([-Wl,-z,now])
@@ -239,6 +243,10 @@ if test "$GCC" = "yes" || test "$GCC" = "egcs"; then
 	*)	OSSH_CHECK_CFLAG_LINK([-fzero-call-used-regs=used]) ;;
 	esac
 	OSSH_CHECK_CFLAG_COMPILE([-ftrivial-auto-var-init=zero])
+    fi
+    if test "x$use_retpoline" = "x1"; then
+	OSSH_CHECK_CFLAG_COMPILE([-mretpoline]) # clang
+	OSSH_CHECK_LDFLAG_LINK([-Wl,-z,retpolineplt])
     fi
 
 	AC_MSG_CHECKING([if $CC accepts -fno-builtin-memset])
@@ -2066,6 +2074,18 @@ AC_ARG_WITH([security-key-builtin],
 	[  --with-security-key-builtin include builtin U2F/FIDO support],
 	[ enable_sk_internal=$withval ]
 )
+
+disable_ecdsa=
+AC_ARG_ENABLE([dsa-keys],
+	[  --disable-dsa-keys      disable DSA key support [no]],
+	[
+		if test "x$enableval" = "xno" ; then
+			disable_ecdsa=1
+		fi
+	]
+)
+test -z "$disable_ecdsa" &&
+    AC_DEFINE([WITH_DSA], [1], [Define if to enable DSA keys.])
 
 AC_SEARCH_LIBS([dlopen], [dl])
 AC_CHECK_FUNCS([dlopen])
@@ -4709,6 +4729,16 @@ AC_ARG_WITH([pid-dir],
 AC_DEFINE_UNQUOTED([_PATH_SSH_PIDDIR], ["$piddir"],
 	[Specify location of ssh.pid])
 AC_SUBST([piddir])
+
+
+AC_ARG_ENABLE([fd-passing],
+	[  --disable-fd-passing    disable file descriptor passsing [no]],
+	[
+		if test "x$enableval" = "xno" ; then
+			AC_DEFINE([DISABLE_FD_PASSING])
+		fi
+	]
+)
 
 dnl allow user to disable some login recording features
 AC_ARG_ENABLE([lastlog],

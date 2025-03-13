@@ -1,4 +1,4 @@
-/* $OpenBSD: ssh-keygen.c,v 1.471 2023/09/04 10:29:58 job Exp $ */
+/* $OpenBSD: ssh-keygen.c,v 1.472 2024/01/11 01:45:36 djm Exp $ */
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
  * Copyright (c) 1994 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
@@ -248,10 +248,6 @@ ask_filename(struct passwd *pw, const char *prompt)
 		name = _PATH_SSH_CLIENT_ID_ED25519;
 	else {
 		switch (sshkey_type_from_name(key_type_name)) {
-		case KEY_DSA_CERT:
-		case KEY_DSA:
-			name = _PATH_SSH_CLIENT_ID_DSA;
-			break;
 		case KEY_ECDSA_CERT:
 		case KEY_ECDSA:
 			name = _PATH_SSH_CLIENT_ID_ECDSA;
@@ -361,10 +357,6 @@ do_convert_to_pkcs8(struct sshkey *k)
 		if (!PEM_write_RSA_PUBKEY(stdout, k->rsa))
 			fatal("PEM_write_RSA_PUBKEY failed");
 		break;
-	case KEY_DSA:
-		if (!PEM_write_DSA_PUBKEY(stdout, k->dsa))
-			fatal("PEM_write_DSA_PUBKEY failed");
-		break;
 	case KEY_ECDSA:
 		if (!PEM_write_EC_PUBKEY(stdout, k->ecdsa))
 			fatal("PEM_write_EC_PUBKEY failed");
@@ -384,10 +376,6 @@ do_convert_to_pem(struct sshkey *k)
 	case KEY_RSA:
 		if (!PEM_write_RSAPublicKey(stdout, k->rsa))
 			fatal("PEM_write_RSAPublicKey failed");
-		break;
-	case KEY_DSA:
-		if (!PEM_write_DSA_PUBKEY(stdout, k->dsa))
-			fatal("PEM_write_DSA_PUBKEY failed");
 		break;
 	case KEY_ECDSA:
 		if (!PEM_write_EC_PUBKEY(stdout, k->ecdsa))
@@ -489,6 +477,10 @@ do_convert_private_ssh2(struct sshbuf *b)
 
 	if (strstr(type, "rsa")) {
 		ktype = KEY_RSA;
+#ifdef WITH_DSA
+	} else if (strstr(type, "dsa")) {
+		ktype = KEY_DSA;
+#endif
 	} else {
 		free(type);
 		return NULL;
@@ -3697,9 +3689,11 @@ main(int argc, char **argv)
 			n += do_print_resource_record(pw,
 			    _PATH_HOST_RSA_KEY_FILE, rr_hostname,
 			    print_generic, opts, nopts);
+#ifdef WITH_DSA
 			n += do_print_resource_record(pw,
 			    _PATH_HOST_DSA_KEY_FILE, rr_hostname,
 			    print_generic, opts, nopts);
+#endif
 			n += do_print_resource_record(pw,
 			    _PATH_HOST_ECDSA_KEY_FILE, rr_hostname,
 			    print_generic, opts, nopts);

@@ -1,4 +1,4 @@
-/* 	$OpenBSD: test_sshkey.c,v 1.23 2023/01/04 22:48:57 tb Exp $ */
+/* 	$OpenBSD: test_sshkey.c,v 1.24 2024/01/11 01:45:58 djm Exp $ */
 /*
  * Regress test for sshkey.h key management API
  *
@@ -175,12 +175,12 @@ get_private(const char *n)
 void
 sshkey_tests(void)
 {
-	struct sshkey *k1, *k2, *k3, *kf;
+	struct sshkey *k1 = NULL, *k2 = NULL, *k3 = NULL, *kf = NULL;
 #ifdef WITH_BEARSSL
-	struct sshkey *k4, *kr;
-	struct sshkey *ke;
+	struct sshkey *k4 = NULL, *kr = NULL;
+	struct sshkey *ke = NULL;
 #endif /* WITH_BEARSSL */
-	struct sshbuf *b;
+	struct sshbuf *b = NULL;
 
 	TEST_START("new invalid");
 	k1 = sshkey_new(-42);
