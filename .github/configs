@@ -81,7 +81,8 @@ case "$config" in
 	    CFLAGS="-fsanitize=memory -fsanitize-memory-track-origins -fno-omit-frame-pointer"
 	    LDFLAGS="-fsanitize=memory"
 	    CPPFLAGS='-Dchroot=chdir -Dexplicit_bzero=bzero -DMSAN_OPTIONS=\"log_path='$SANLOGS'/msan.log\"'
-	    CONFIGFLAGS="--without-openssl --without-zlib --without-shadow"
+	    CONFIGFLAGS="--without-zlib --without-shadow"
+	    LIBCRYPTOFLAGS="--without-bearssl"
 	    TEST_TARGET="t-exec"
 	    ;;
 	*-sanitize-undefined)
@@ -198,12 +199,14 @@ esac
 # The Solaris 64bit targets are special since they need a non-flag arg.
 case "$config" in
     sol64*)
-	CONFIGFLAGS="x86_64 --with-cflags=-m64 --with-ldflags=-m64 ${CONFIGFLAGS}"
+	CONFIGFLAGS="--target=x86_64 --with-cflags=-m64 --with-ldflags=-m64 ${CONFIGFLAGS}"
 	;;
 esac
 
 case "${TARGET_HOST}" in
     aix*)
+	CONFIGFLAGS="--disable-security-key"
+	LIBCRYPTOFLAGS="--without-bearssl"
 	# These are slow real or virtual machines so skip the slowest tests
 	# (which tend to be thw ones that transfer lots of data) so that the
 	# test run does not time out.
@@ -228,7 +231,8 @@ case "${TARGET_HOST}" in
 	SKIP_LTESTS="forwarding multiplex proxy-connect hostkey-agent agent-ptrace"
 	;;
     minix3)
-	LIBCRYPTOFLAGS="--without-bearssl --disable-security-key"
+	CONFIGFLAGS="${CONFIGFLAGS} --disable-security-key"
+	LIBCRYPTOFLAGS="--without-bearssl"
 	# Minix does not have a loopback interface so we have to skip any
 	# test that relies on one.
 	# Also, Minix seems to be very limited in the number of select()
@@ -252,7 +256,8 @@ case "${TARGET_HOST}" in
 	CONFIGFLAGS="${CONFIGFLAGS} --without-hardening --disable-security-key"
 	;;
     openwrt-*)
-	CONFIGFLAGS="${CONFIGFLAGS} --without-openssl --without-zlib"
+	CONFIGFLAGS="${CONFIGFLAGS} --without-zlib"
+	LIBCRYPTOFLAGS="--without-bearssl"
 	TEST_TARGET="t-exec"
 	;;
     sol10|sol11)
@@ -266,7 +271,8 @@ case "${TARGET_HOST}" in
 	;;
 esac
 
-case "`./config.guess`" in
+host=`./config.guess`
+case "$host" in
 *cygwin)
 	SUDO=""
 	# Don't run compat tests on cygwin as they don't currently compile.

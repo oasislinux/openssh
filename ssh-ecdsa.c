@@ -337,12 +337,11 @@ ssh_ecdsa_verify(const struct sshkey *key,
     struct sshkey_sig_details **detailsp)
 {
 	u_char rawsig[132];	/* maximum ECDSA signature length */
-	size_t rslen;
+	u_char digest[SSH_DIGEST_MAX_LENGTH];
+	size_t rslen, digestlen;
 	const u_char *sig_r = NULL, *sig_s = NULL;
 	size_t sig_rlen, sig_slen;
 	int hash_alg;
-	u_char digest[SSH_DIGEST_MAX_LENGTH];
-	size_t hlen;
 	int ret = SSH_ERR_INTERNAL_ERROR;
 	struct sshbuf *b = NULL, *sigbuf = NULL;
 	char *ktype = NULL;
@@ -353,7 +352,7 @@ ssh_ecdsa_verify(const struct sshkey *key,
 		return SSH_ERR_INVALID_ARGUMENT;
 
 	if ((hash_alg = sshkey_ec_nid_to_hash_alg(key->ecdsa_nid)) == -1 ||
-	    (hlen = ssh_digest_bytes(hash_alg)) == 0)
+	    (digestlen = ssh_digest_bytes(hash_alg)) == 0)
 		return SSH_ERR_INTERNAL_ERROR;
 
 	/* fetch signature */
@@ -394,8 +393,8 @@ ssh_ecdsa_verify(const struct sshkey *key,
 	    digest, sizeof(digest))) != 0)
 		goto out;
 
-	if (br_ecdsa_vrfy_raw_get_default()(br_ec_get_default(), digest, dlen,
-	    &key->ecdsa_pk->key, rawsig, rslen) != 1) {
+	if (br_ecdsa_vrfy_raw_get_default()(br_ec_get_default(), digest,
+	    digestlen, &key->ecdsa_pk->key, rawsig, rslen) != 1) {
 		ret = SSH_ERR_SIGNATURE_INVALID;
 		goto out;
 	}

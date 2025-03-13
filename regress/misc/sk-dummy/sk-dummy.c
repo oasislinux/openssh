@@ -24,9 +24,6 @@
 #include <stdio.h>
 #include <stddef.h>
 #include <stdarg.h>
-#ifdef HAVE_SHA2_H
-#include <sha2.h>
-#endif
 
 #include "crypto_api.h"
 #include "sk-api.h"

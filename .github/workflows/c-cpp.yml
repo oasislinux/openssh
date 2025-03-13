@@ -13,7 +13,14 @@ jobs:
       fail-fast: false
       matrix:
         # First we test all OSes in the default configuration.
-        target: [ubuntu-20.04, ubuntu-22.04, macos-11, macos-12, windows-2019, windows-2022]
+        target:
+          - ubuntu-20.04
+          - ubuntu-22.04
+          - macos-11
+          - macos-12
+          - macos-13
+          - windows-2019
+          - windows-2022
         config: [default]
         # Then we include any extra configs we want to test for specific VMs.
         # Valgrind slows things down quite a bit, so start them first.
@@ -43,7 +50,7 @@ jobs:
           - { target: ubuntu-20.04, config: gcc-11-Werror }
           - { target: ubuntu-20.04, config: pam }
           - { target: ubuntu-20.04, config: kitchensink }
-          - { target: ubuntu-20.04, config: hardenedmalloc }
+          - { target: ubuntu-22.04, config: hardenedmalloc }
           - { target: ubuntu-20.04, config: tcmalloc }
           - { target: ubuntu-20.04, config: musl }
           - { target: ubuntu-latest, config: bearssl-head }
@@ -57,6 +64,7 @@ jobs:
           - { target: ubuntu-22.04, config: without-bearssl }
           - { target: macos-11, config: pam }
           - { target: macos-12, config: pam }
+          - { target: macos-13, config: pam }
     runs-on: ${{ matrix.target }}
     steps:
     - name: set cygwin git params

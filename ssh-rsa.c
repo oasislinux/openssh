@@ -555,7 +555,7 @@ ssh_rsa_verify(const struct sshkey *key,
 
 	if (br_rsa_pkcs1_vrfy_get_default()(sigblob, len, oid, hlen,
 	    &key->rsa_pk->key, sigdigest) != 1 ||
-	    timingsafe_bcmp(digest, sigdigest, dlen) != 0) {
+	    timingsafe_bcmp(digest, sigdigest, hlen) != 0) {
 		ret = SSH_ERR_SIGNATURE_INVALID;
 		goto out;
 	}
