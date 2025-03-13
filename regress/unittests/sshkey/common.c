@@ -1,4 +1,4 @@
-/* 	$OpenBSD: common.c,v 1.5 2021/12/14 21:25:27 deraadt Exp $ */
+/* 	$OpenBSD: common.c,v 1.6 2024/08/15 00:52:23 djm Exp $ */
 /*
  * Helpers for key API tests
  *

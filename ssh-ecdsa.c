@@ -1,4 +1,4 @@
-/* $OpenBSD: ssh-ecdsa.c,v 1.26 2023/03/08 04:43:12 guenther Exp $ */
+/* $OpenBSD: ssh-ecdsa.c,v 1.27 2024/08/15 00:51:51 djm Exp $ */
 /*
  * Copyright (c) 2000 Markus Friedl.  All rights reserved.
  * Copyright (c) 2010 Damien Miller.  All rights reserved.
@@ -118,8 +118,8 @@ ssh_ecdsa_serialize_private(const struct sshkey *key, struct sshbuf *b,
 static int
 ssh_ecdsa_generate(struct sshkey *k, int bits)
 {
-	struct sshkey_ecdsa_pk *ecdsa_pk;
-	struct sshkey_ecdsa_sk *ecdsa_sk;
+	struct sshkey_ecdsa_pk *ecdsa_pk = NULL;
+	struct sshkey_ecdsa_sk *ecdsa_sk = NULL;
 	const br_prng_class *rng = &arc4random_prng;
 	int ret = SSH_ERR_INTERNAL_ERROR;
 
@@ -137,12 +137,13 @@ ssh_ecdsa_generate(struct sshkey *k, int bits)
 		ret = SSH_ERR_LIBCRYPTO_ERROR;
 		goto out;
 	}
+	/* success */
 	k->ecdsa_pk = ecdsa_pk;
 	ecdsa_pk = NULL;
 	k->ecdsa_sk = ecdsa_sk;
 	ecdsa_sk = NULL;
 	ret = 0;
-out:
+ out:
 	freezero(ecdsa_pk, sizeof(*ecdsa_pk));
 	freezero(ecdsa_sk, sizeof(*ecdsa_sk));
 	return ret;
@@ -151,13 +152,17 @@ out:
 static int
 ssh_ecdsa_copy_public(const struct sshkey *from, struct sshkey *to)
 {
-	to->ecdsa_nid = from->ecdsa_nid;
-	if ((to->ecdsa_pk = calloc(1, sizeof(*to->ecdsa_pk))) == NULL)
+	struct sshkey_ecdsa_pk *ecdsa_pk;
+
+	if ((ecdsa_pk = calloc(1, sizeof(*ecdsa_pk))) == NULL)
 		return SSH_ERR_ALLOC_FAIL;
-	to->ecdsa_pk->key.curve = from->ecdsa_pk->key.curve;
-	to->ecdsa_pk->key.q = to->ecdsa_pk->data;
-	to->ecdsa_pk->key.qlen = from->ecdsa_pk->key.qlen;
-	memcpy(to->ecdsa_pk->key.q, from->ecdsa_pk->key.q, from->ecdsa_pk->key.qlen);
+	ecdsa_pk->key.curve = from->ecdsa_pk->key.curve;
+	ecdsa_pk->key.q = ecdsa_pk->data;
+	ecdsa_pk->key.qlen = from->ecdsa_pk->key.qlen;
+	memcpy(ecdsa_pk->key.q, from->ecdsa_pk->key.q, from->ecdsa_pk->key.qlen);
+
+	to->ecdsa_nid = from->ecdsa_nid;
+	to->ecdsa_pk = ecdsa_pk;
 	return 0;
 }
 
@@ -167,49 +172,50 @@ ssh_ecdsa_deserialize_public(const char *ktype, struct sshbuf *b,
 {
 	int r;
 	char *curve = NULL;
+	struct sshkey_ecdsa_pk *ecdsa_pk = NULL;
+	int ecdsa_nid;
 	const u_char *ecdsa_q;
 	size_t ecdsa_qlen;
 
-	if ((key->ecdsa_nid = sshkey_ecdsa_nid_from_name(ktype)) == -1)
+	if ((ecdsa_nid = sshkey_ecdsa_nid_from_name(ktype)) == -1)
 		return SSH_ERR_INVALID_ARGUMENT;
 	if ((r = sshbuf_get_cstring(b, &curve, NULL)) != 0)
 		goto out;
-	if (key->ecdsa_nid != sshkey_curve_name_to_nid(curve)) {
+	if (ecdsa_nid != sshkey_curve_name_to_nid(curve)) {
 		r = SSH_ERR_EC_CURVE_MISMATCH;
 		goto out;
 	}
-	freezero(key->ecdsa_pk, sizeof(*key->ecdsa_pk));
-	key->ecdsa_pk = NULL;
-	if ((key->ecdsa_pk = calloc(1, sizeof(*key->ecdsa_pk))) == NULL) {
+	if ((ecdsa_pk = calloc(1, sizeof(*ecdsa_pk))) == NULL) {
 		r = SSH_ERR_ALLOC_FAIL;
 		goto out;
 	}
 	if ((r = sshbuf_get_ec_bytes_direct(b, &ecdsa_q, &ecdsa_qlen)) != 0)
 		goto out;
-	if (ecdsa_qlen > sizeof(key->ecdsa_pk->data)) {
+	if (ecdsa_qlen > sizeof(ecdsa_pk->data)) {
 		r = SSH_ERR_LIBCRYPTO_ERROR;
 		goto out;
 	}
-	key->ecdsa_pk->key.curve = key->ecdsa_nid;
-	key->ecdsa_pk->key.q = key->ecdsa_pk->data;
-	key->ecdsa_pk->key.qlen = ecdsa_qlen;
-	memcpy(key->ecdsa_pk->key.q, ecdsa_q, ecdsa_qlen);
-	if (sshkey_ec_validate_public(key->ecdsa_nid, ecdsa_q,
+	ecdsa_pk->key.curve = ecdsa_nid;
+	ecdsa_pk->key.q = ecdsa_pk->data;
+	ecdsa_pk->key.qlen = ecdsa_qlen;
+	memcpy(ecdsa_pk->key.q, ecdsa_q, ecdsa_qlen);
+	if (sshkey_ec_validate_public(ecdsa_nid, ecdsa_q,
 	    ecdsa_qlen) != 0) {
 		r = SSH_ERR_KEY_INVALID_EC_VALUE;
 		goto out;
 	}
+
 	/* success */
+	key->ecdsa_nid = ecdsa_nid;
+	key->ecdsa_pk = ecdsa_pk;
+	ecdsa_pk = NULL;
 	r = 0;
 #ifdef DEBUG_PK
-		/* XXX */
+	/* XXX */
 #endif
  out:
+	freezero(ecdsa_pk, sizeof(*key->ecdsa_pk));
 	free(curve);
-	if (r != 0) {
-		freezero(key->ecdsa_pk, sizeof(*key->ecdsa_pk));
-		key->ecdsa_pk = NULL;
-	}
 	return r;
 }
 
@@ -218,6 +224,7 @@ ssh_ecdsa_deserialize_private(const char *ktype, struct sshbuf *b,
     struct sshkey *key)
 {
 	int r;
+	struct sshkey_ecdsa_sk *ecdsa_sk = NULL;
 	const u_char *ecdsa_x;
 	size_t ecdsa_xlen;
 
@@ -225,30 +232,30 @@ ssh_ecdsa_deserialize_private(const char *ktype, struct sshbuf *b,
 		if ((r = ssh_ecdsa_deserialize_public(ktype, b, key)) != 0)
 			return r;
 	}
-	if ((key->ecdsa_sk = calloc(1, sizeof(*key->ecdsa_sk))) == NULL) {
+
+	if ((ecdsa_sk = calloc(1, sizeof(*ecdsa_sk))) == NULL) {
 		r = SSH_ERR_ALLOC_FAIL;
 		goto out;
 	}
 	if ((r = sshbuf_get_bignum2_bytes_direct(b, &ecdsa_x, &ecdsa_xlen)) != 0)
 		goto out;
-	if (ecdsa_xlen > sizeof(key->ecdsa_sk->data)) {
+	if (ecdsa_xlen > sizeof(ecdsa_sk->data)) {
 		r = SSH_ERR_LIBCRYPTO_ERROR;
 		goto out;
 	}
-	key->ecdsa_sk->key.curve = key->ecdsa_nid;
-	key->ecdsa_sk->key.x = key->ecdsa_sk->data;
-	key->ecdsa_sk->key.xlen = ecdsa_xlen;
-	memcpy(key->ecdsa_sk->key.x, ecdsa_x, ecdsa_xlen);
-	if ((r = sshkey_ec_validate_private(key->ecdsa_nid,
-	    key->ecdsa_sk->key.x, key->ecdsa_sk->key.xlen)) != 0)
+	ecdsa_sk->key.curve = key->ecdsa_pk->key.curve;
+	ecdsa_sk->key.x = ecdsa_sk->data;
+	ecdsa_sk->key.xlen = ecdsa_xlen;
+	memcpy(ecdsa_sk->key.x, ecdsa_x, ecdsa_xlen);
+	if ((r = sshkey_ec_validate_private(ecdsa_sk->key.curve,
+	    ecdsa_sk->key.x, ecdsa_sk->key.xlen)) != 0)
 		goto out;
 	/* success */
+	key->ecdsa_sk = ecdsa_sk;
+	ecdsa_sk = NULL;
 	r = 0;
  out:
-	if (r != 0) {
-		freezero(key->ecdsa_sk, sizeof(*key->ecdsa_sk));
-		key->ecdsa_sk = NULL;
-	}
+	freezero(ecdsa_sk, sizeof(*ecdsa_sk));
 	return r;
 }
 
@@ -301,7 +308,6 @@ ssh_ecdsa_sign(struct sshkey *key,
 		ret = SSH_ERR_LIBCRYPTO_ERROR;
 		goto out;
 	}
-
 	if ((bb = sshbuf_new()) == NULL || (b = sshbuf_new()) == NULL) {
 		ret = SSH_ERR_ALLOC_FAIL;
 		goto out;
@@ -379,6 +385,11 @@ ssh_ecdsa_verify(const struct sshkey *key,
 		ret = SSH_ERR_INVALID_FORMAT;
 		goto out;
 	}
+	if (sshbuf_len(sigbuf) != 0) {
+		ret = SSH_ERR_UNEXPECTED_TRAILING_DATA;
+		goto out;
+	}
+
 	rslen = MAXIMUM(sig_rlen, sig_slen) * 2;
 	memset(rawsig, 0, rslen / 2 - sig_rlen);
 	memcpy(rawsig + (rslen / 2 - sig_rlen), sig_r, sig_rlen);
@@ -398,7 +409,8 @@ ssh_ecdsa_verify(const struct sshkey *key,
 		ret = SSH_ERR_SIGNATURE_INVALID;
 		goto out;
 	}
-
+	/* success */
+	ret = 0;
  out:
 	explicit_bzero(rawsig, sizeof(rawsig));
 	explicit_bzero(digest, sizeof(digest));

@@ -1,4 +1,4 @@
-/* $OpenBSD: sshkey.c,v 1.142 2024/01/11 01:45:36 djm Exp $ */
+/* $OpenBSD: sshkey.c,v 1.146 2024/09/04 05:33:34 djm Exp $ */
 /*
  * Copyright (c) 2000, 2001 Markus Friedl.  All rights reserved.
  * Copyright (c) 2008 Alexander von Gernler.  All rights reserved.
@@ -28,6 +28,7 @@
 #include "includes.h"
 
 #include <sys/types.h>
+#include <sys/mman.h>
 #include <netinet/in.h>
 
 #ifdef WITH_BEARSSL
@@ -228,20 +229,34 @@ sshkey_ssh_name_plain(const struct sshkey *k)
 	    k->ecdsa_nid);
 }
 
-int
-sshkey_type_from_name(const char *name)
+static int
+type_from_name(const char *name, int allow_short)
 {
 	int i;
 	const struct sshkey_impl *impl;
 
 	for (i = 0; keyimpls[i] != NULL; i++) {
 		impl = keyimpls[i];
+		if (impl->name != NULL && strcmp(name, impl->name) == 0)
+			return impl->type;
 		/* Only allow shortname matches for plain key types */
-		if ((impl->name != NULL && strcmp(name, impl->name) == 0) ||
-		    (!impl->cert && strcasecmp(impl->shortname, name) == 0))
+		if (allow_short && !impl->cert && impl->shortname != NULL &&
+		    strcasecmp(impl->shortname, name) == 0)
 			return impl->type;
 	}
 	return KEY_UNSPEC;
+}
+
+int
+sshkey_type_from_name(const char *name)
+{
+	return type_from_name(name, 0);
+}
+
+int
+sshkey_type_from_shortname(const char *name)
+{
+	return type_from_name(name, 1);
 }
 
 static int
@@ -622,6 +637,38 @@ sshkey_sk_cleanup(struct sshkey *k)
 	k->sk_key_handle = k->sk_reserved = NULL;
 }
 
+#if defined(MAP_CONCEAL)
+# define PREKEY_MMAP_FLAG	MAP_CONCEAL
+#elif defined(MAP_NOCORE)
+# define PREKEY_MMAP_FLAG	MAP_NOCORE
+#else
+# define PREKEY_MMAP_FLAG	0
+#endif
+
+static int
+sshkey_prekey_alloc(u_char **prekeyp, size_t len)
+{
+	u_char *prekey;
+
+	*prekeyp = NULL;
+	if ((prekey = mmap(NULL, len, PROT_READ|PROT_WRITE,
+	    MAP_ANON|MAP_PRIVATE|PREKEY_MMAP_FLAG, -1, 0)) == MAP_FAILED)
+		return SSH_ERR_SYSTEM_ERROR;
+#if defined(MADV_DONTDUMP) && !defined(MAP_CONCEAL) && !defined(MAP_NOCORE)
+	(void)madvise(prekey, len, MADV_DONTDUMP);
+#endif
+	*prekeyp = prekey;
+	return 0;
+}
+
+static void
+sshkey_prekey_free(void *prekey, size_t len)
+{
+	if (prekey == NULL)
+		return;
+	munmap(prekey, len);
+}
+
 static void
 sshkey_free_contents(struct sshkey *k)
 {
@@ -635,7 +682,7 @@ sshkey_free_contents(struct sshkey *k)
 	if (sshkey_is_cert(k))
 		cert_free(k->cert);
 	freezero(k->shielded_private, k->shielded_len);
-	freezero(k->shield_prekey, k->shield_prekey_len);
+	sshkey_prekey_free(k->shield_prekey, k->shield_prekey_len);
 }
 
 void
@@ -1482,10 +1529,8 @@ sshkey_shield_private(struct sshkey *k)
 	}
 
 	/* Prepare a random pre-key, and from it an ephemeral key */
-	if ((prekey = malloc(SSHKEY_SHIELD_PREKEY_LEN)) == NULL) {
-		r = SSH_ERR_ALLOC_FAIL;
+	if ((r = sshkey_prekey_alloc(&prekey, SSHKEY_SHIELD_PREKEY_LEN)) != 0)
 		goto out;
-	}
 	arc4random_buf(prekey, SSHKEY_SHIELD_PREKEY_LEN);
 	if ((r = ssh_digest_memory(SSHKEY_SHIELD_PREKEY_HASH,
 	    prekey, SSHKEY_SHIELD_PREKEY_LEN,
@@ -1563,7 +1608,7 @@ sshkey_shield_private(struct sshkey *k)
 	explicit_bzero(keyiv, sizeof(keyiv));
 	explicit_bzero(&tmp, sizeof(tmp));
 	freezero(enc, enclen);
-	freezero(prekey, SSHKEY_SHIELD_PREKEY_LEN);
+	sshkey_prekey_free(prekey, SSHKEY_SHIELD_PREKEY_LEN);
 	sshkey_free(kswap);
 	sshbuf_free(prvbuf);
 	return r;
@@ -3200,7 +3245,11 @@ sshkey_parse_private_pem_fileblob(struct sshbuf *blob, int type,
 	br_rsa_compute_privexp compute_privexp;
 	struct sshkey *prv = NULL;
 	int key_type = 0;
+	struct sshkey_rsa_pk *rsa_pk = NULL;
+	struct sshkey_rsa_sk *rsa_sk = NULL;
 	const br_rsa_private_key *rsa;
+	struct sshkey_ecdsa_pk *ecdsa_pk = NULL;
+	struct sshkey_ecdsa_sk *ecdsa_sk = NULL;
 	const br_ec_private_key *ec;
 	const char *pem_name;
 	uint32_t pubexp;
@@ -3256,8 +3305,8 @@ sshkey_parse_private_pem_fileblob(struct sshbuf *blob, int type,
 			goto out;
 		}
 		if ((prv = sshkey_new(KEY_RSA)) == NULL ||
-		    (prv->rsa_sk = calloc(1, sizeof(*prv->rsa_sk))) == NULL ||
-		    (prv->rsa_pk = calloc(1, sizeof(*prv->rsa_pk))) == NULL) {
+		    (rsa_sk = calloc(1, sizeof(*rsa_sk))) == NULL ||
+		    (rsa_pk = calloc(1, sizeof(*rsa_pk))) == NULL) {
 			r = SSH_ERR_ALLOC_FAIL;
 			goto out;
 		}
@@ -3274,53 +3323,58 @@ sshkey_parse_private_pem_fileblob(struct sshbuf *blob, int type,
 		/* Compute public modulus, public exponent, and
 		 * private exponent. This will fail if p or q is
 		 * not 3 mod 4. */
-		if ((prv->rsa_pk->key.nlen = compute_modulus(NULL, rsa)) == 0 ||
+		if ((rsa_pk->key.nlen = compute_modulus(NULL, rsa)) == 0 ||
 		    (pubexp = br_rsa_compute_pubexp_get_default()(rsa)) == 0 ||
-		    (prv->rsa_sk->dlen = compute_privexp(NULL, rsa,
+		    (rsa_sk->dlen = compute_privexp(NULL, rsa,
 		    pubexp)) == 0) {
 			r = SSH_ERR_LIBCRYPTO_ERROR;
 			goto out;
 		}
-		if (prv->rsa_pk->key.nlen > sizeof(prv->rsa_pk->data) - 4 ||
-		    prv->rsa_sk->dlen > sizeof(prv->rsa_sk->d) ||
+		if (rsa_pk->key.nlen > sizeof(rsa_pk->data) - 4 ||
+		    rsa_sk->dlen > sizeof(rsa_sk->d) ||
 		    rsa->plen + rsa->qlen + rsa->dplen + rsa->dqlen +
-		    rsa->iqlen > sizeof(prv->rsa_sk->data)) {
+		    rsa->iqlen > sizeof(rsa_sk->data)) {
 			r = SSH_ERR_NO_BUFFER_SPACE;
 			goto out;
 		}
-		prv->rsa_pk->key.n = prv->rsa_pk->data;
-		compute_modulus(prv->rsa_pk->key.n, rsa);
-		if (compute_privexp(prv->rsa_sk->d, rsa, pubexp) !=
-		    prv->rsa_sk->dlen) {
+		rsa_pk->key.n = rsa_pk->data;
+		compute_modulus(rsa_pk->key.n, rsa);
+		if (compute_privexp(rsa_sk->d, rsa, pubexp) !=
+		    rsa_sk->dlen) {
 			r = SSH_ERR_LIBCRYPTO_ERROR;
 			goto out;
 		}
 
-		prv->rsa_pk->key.e = prv->rsa_pk->key.n + prv->rsa_pk->key.nlen;
-		prv->rsa_pk->key.elen = 4;
-		POKE_U32(prv->rsa_pk->key.e, pubexp);
+		rsa_pk->key.e = rsa_pk->key.n + rsa_pk->key.nlen;
+		rsa_pk->key.elen = 4;
+		POKE_U32(rsa_pk->key.e, pubexp);
 		/* Trim leading zeros */
-		while (prv->rsa_pk->key.elen > 0 && prv->rsa_pk->key.e[0] == 0) {
-			--prv->rsa_pk->key.elen;
-			++prv->rsa_pk->key.e;
+		while (rsa_pk->key.elen > 0 && rsa_pk->key.e[0] == 0) {
+			--rsa_pk->key.elen;
+			++rsa_pk->key.e;
 		}
 
-		prv->rsa_sk->key.n_bitlen = rsa->n_bitlen;
-		prv->rsa_sk->key.p = prv->rsa_sk->data;
-		prv->rsa_sk->key.plen = rsa->plen;
-		memcpy(prv->rsa_sk->key.p, rsa->p, rsa->plen);
-		prv->rsa_sk->key.q = prv->rsa_sk->key.p + rsa->plen;
-		prv->rsa_sk->key.qlen = rsa->qlen;
-		memcpy(prv->rsa_sk->key.q, rsa->q, rsa->qlen);
-		prv->rsa_sk->key.dp = prv->rsa_sk->key.q + rsa->qlen;
-		prv->rsa_sk->key.dplen = rsa->dplen;
-		memcpy(prv->rsa_sk->key.dp, rsa->dp, rsa->dplen);
-		prv->rsa_sk->key.dq = prv->rsa_sk->key.dp + rsa->dplen;
-		prv->rsa_sk->key.dqlen = rsa->dqlen;
-		memcpy(prv->rsa_sk->key.dq, rsa->dq, rsa->dqlen);
-		prv->rsa_sk->key.iq = prv->rsa_sk->key.dq + rsa->dqlen;
-		prv->rsa_sk->key.iqlen = rsa->iqlen;
-		memcpy(prv->rsa_sk->key.iq, rsa->iq, rsa->iqlen);
+		rsa_sk->key.n_bitlen = rsa->n_bitlen;
+		rsa_sk->key.p = rsa_sk->data;
+		rsa_sk->key.plen = rsa->plen;
+		memcpy(rsa_sk->key.p, rsa->p, rsa->plen);
+		rsa_sk->key.q = rsa_sk->key.p + rsa->plen;
+		rsa_sk->key.qlen = rsa->qlen;
+		memcpy(rsa_sk->key.q, rsa->q, rsa->qlen);
+		rsa_sk->key.dp = rsa_sk->key.q + rsa->qlen;
+		rsa_sk->key.dplen = rsa->dplen;
+		memcpy(rsa_sk->key.dp, rsa->dp, rsa->dplen);
+		rsa_sk->key.dq = rsa_sk->key.dp + rsa->dplen;
+		rsa_sk->key.dqlen = rsa->dqlen;
+		memcpy(rsa_sk->key.dq, rsa->dq, rsa->dqlen);
+		rsa_sk->key.iq = rsa_sk->key.dq + rsa->dqlen;
+		rsa_sk->key.iqlen = rsa->iqlen;
+		memcpy(rsa_sk->key.iq, rsa->iq, rsa->iqlen);
+
+		prv->rsa_pk = rsa_pk;
+		rsa_pk = NULL;
+		prv->rsa_sk = rsa_sk;
+		rsa_sk = NULL;
 		break;
 	case BR_KEYTYPE_EC:
 		if (type != KEY_UNSPEC && type != KEY_ECDSA) {
@@ -3328,36 +3382,41 @@ sshkey_parse_private_pem_fileblob(struct sshbuf *blob, int type,
 			goto out;
 		}
 		if ((prv = sshkey_new(KEY_ECDSA)) == NULL ||
-		    (prv->ecdsa_sk = calloc(1, sizeof(*prv->ecdsa_sk))) == NULL ||
-		    (prv->ecdsa_pk = calloc(1, sizeof(*prv->ecdsa_pk))) == NULL) {
+		    (ecdsa_sk = calloc(1, sizeof(*ecdsa_sk))) == NULL ||
+		    (ecdsa_pk = calloc(1, sizeof(*ecdsa_pk))) == NULL) {
 			r = SSH_ERR_ALLOC_FAIL;
 			goto out;
 		}
 
 		ec = br_skey_decoder_get_ec(&key_ctx);
-		if (ec->xlen > sizeof(prv->ecdsa_sk->data)) {
+		if (ec->xlen > sizeof(ecdsa_sk->data)) {
 			r = SSH_ERR_NO_BUFFER_SPACE;
 			goto out;
 		}
-		if (br_ec_compute_pub(br_ec_get_default(), &prv->ecdsa_pk->key,
-		    prv->ecdsa_pk->data, ec) == 0) {
+		if (br_ec_compute_pub(br_ec_get_default(), &ecdsa_pk->key,
+		    ecdsa_pk->data, ec) == 0) {
 			r = SSH_ERR_LIBCRYPTO_ERROR;
 			goto out;
 		}
-		prv->ecdsa_nid = ec->curve;
-		prv->ecdsa_sk->key.curve = ec->curve;
-		prv->ecdsa_sk->key.x = prv->ecdsa_sk->data;
-		prv->ecdsa_sk->key.xlen = ec->xlen;
-		memcpy(prv->ecdsa_sk->key.x, ec->x, ec->xlen);
+		ecdsa_sk->key.curve = ec->curve;
+		ecdsa_sk->key.x = ecdsa_sk->data;
+		ecdsa_sk->key.xlen = ec->xlen;
+		memcpy(ecdsa_sk->key.x, ec->x, ec->xlen);
 
-		if (sshkey_curve_nid_to_name(prv->ecdsa_nid) == NULL ||
-		    sshkey_ec_validate_public(prv->ecdsa_nid,
-		    prv->ecdsa_pk->key.q, prv->ecdsa_pk->key.qlen) != 0 ||
-		    sshkey_ec_validate_private(prv->ecdsa_nid,
-		    prv->ecdsa_sk->key.x, prv->ecdsa_sk->key.xlen) != 0) {
+		if (sshkey_curve_nid_to_name(ec->curve) == NULL ||
+		    sshkey_ec_validate_public(ec->curve,
+		    ecdsa_pk->key.q, ecdsa_pk->key.qlen) != 0 ||
+		    sshkey_ec_validate_private(ec->curve,
+		    ecdsa_sk->key.x, ecdsa_sk->key.xlen) != 0) {
 			r = SSH_ERR_INVALID_FORMAT;
 			goto out;
 		}
+
+		prv->ecdsa_nid = ec->curve;
+		prv->ecdsa_pk = ecdsa_pk;
+		ecdsa_pk = NULL;
+		prv->ecdsa_sk = ecdsa_sk;
+		ecdsa_sk = NULL;
 		break;
 	case 0:
 		r = SSH_ERR_INVALID_FORMAT;
@@ -3372,6 +3431,10 @@ sshkey_parse_private_pem_fileblob(struct sshbuf *blob, int type,
  out:
 	explicit_bzero(&pem_ctx, sizeof(pem_ctx));
 	explicit_bzero(&key_ctx, sizeof(key_ctx));
+	freezero(rsa_pk, sizeof(*rsa_pk));
+	freezero(rsa_sk, sizeof(*rsa_sk));
+	freezero(ecdsa_pk, sizeof(*ecdsa_pk));
+	freezero(ecdsa_sk, sizeof(*ecdsa_sk));
 	sshkey_free(prv);
 	return r;
 }
