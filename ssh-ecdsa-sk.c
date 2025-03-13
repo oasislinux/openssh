@@ -1,4 +1,4 @@
-/* $OpenBSD: ssh-ecdsa-sk.c,v 1.8 2020/06/22 23:44:27 djm Exp $ */
+/* $OpenBSD: ssh-ecdsa-sk.c,v 1.17 2022/10/28 00:44:44 djm Exp $ */
 /*
  * Copyright (c) 2000 Markus Friedl.  All rights reserved.
  * Copyright (c) 2010 Damien Miller.  All rights reserved.
@@ -57,6 +57,99 @@ ssh_ecdsa_sk_verify(const struct sshkey *key,
 	return SSH_ERR_FEATURE_UNSUPPORTED;
 }
 #else /* WITH_BEARSSL */
+
+/* Reuse some ECDSA internals */
+extern struct sshkey_impl_funcs sshkey_ecdsa_funcs;
+
+static void
+ssh_ecdsa_sk_cleanup(struct sshkey *k)
+{
+	sshkey_sk_cleanup(k);
+	sshkey_ecdsa_funcs.cleanup(k);
+}
+
+static int
+ssh_ecdsa_sk_equal(const struct sshkey *a, const struct sshkey *b)
+{
+	if (!sshkey_sk_fields_equal(a, b))
+		return 0;
+	if (!sshkey_ecdsa_funcs.equal(a, b))
+		return 0;
+	return 1;
+}
+
+static int
+ssh_ecdsa_sk_serialize_public(const struct sshkey *key, struct sshbuf *b,
+    enum sshkey_serialize_rep opts)
+{
+	int r;
+
+	if ((r = sshkey_ecdsa_funcs.serialize_public(key, b, opts)) != 0)
+		return r;
+	if ((r = sshkey_serialize_sk(key, b)) != 0)
+		return r;
+
+	return 0;
+}
+
+static int
+ssh_ecdsa_sk_serialize_private(const struct sshkey *key, struct sshbuf *b,
+    enum sshkey_serialize_rep opts)
+{
+	int r;
+
+	if (!sshkey_is_cert(key)) {
+		if ((r = sshkey_ecdsa_funcs.serialize_public(key,
+		    b, opts)) != 0)
+			return r;
+	}
+	if ((r = sshkey_serialize_private_sk(key, b)) != 0)
+		return r;
+
+	return 0;
+}
+
+static int
+ssh_ecdsa_sk_copy_public(const struct sshkey *from, struct sshkey *to)
+{
+	int r;
+
+	if ((r = sshkey_ecdsa_funcs.copy_public(from, to)) != 0)
+		return r;
+	if ((r = sshkey_copy_public_sk(from, to)) != 0)
+		return r;
+	return 0;
+}
+
+static int
+ssh_ecdsa_sk_deserialize_public(const char *ktype, struct sshbuf *b,
+    struct sshkey *key)
+{
+	int r;
+
+	if ((r = sshkey_ecdsa_funcs.deserialize_public(ktype, b, key)) != 0)
+		return r;
+	if ((r = sshkey_deserialize_sk(b, key)) != 0)
+		return r;
+	return 0;
+}
+
+static int
+ssh_ecdsa_sk_deserialize_private(const char *ktype, struct sshbuf *b,
+    struct sshkey *key)
+{
+	int r;
+
+	if (!sshkey_is_cert(key)) {
+		if ((r = sshkey_ecdsa_funcs.deserialize_public(ktype,
+		    b, key)) != 0)
+			return r;
+	}
+	if ((r = sshkey_private_deserialize_sk(b, key)) != 0)
+		return r;
+
+	return 0;
+}
 
 /*
  * Check FIDO/W3C webauthn signatures clientData field against the expected
@@ -135,14 +228,14 @@ webauthn_check_prepare_hash(const u_char *data, size_t datalen,
 }
 
 /* ARGSUSED */
-int
+static int
 ssh_ecdsa_sk_verify(const struct sshkey *key,
-    const u_char *signature, size_t signaturelen,
-    const u_char *data, size_t datalen, u_int compat,
+    const u_char *sig, size_t siglen,
+    const u_char *data, size_t dlen, const char *alg, u_int compat,
     struct sshkey_sig_details **detailsp)
 {
-	u_char sig[132];	/* maximum ECDSA signature length */
-	size_t slen;
+	u_char rawsig[132];	/* maximum ECDSA signature length */
+	size_t rslen;
 	const u_char *sig_r = NULL, *sig_s = NULL;
 	size_t sig_rlen, sig_slen;
 	u_char sig_flags;
@@ -161,14 +254,14 @@ ssh_ecdsa_sk_verify(const struct sshkey *key,
 		*detailsp = NULL;
 	if (key == NULL || key->ecdsa_pk == NULL ||
 	    sshkey_type_plain(key->type) != KEY_ECDSA_SK ||
-	    signature == NULL || signaturelen == 0)
+	    sig == NULL || siglen == 0)
 		return SSH_ERR_INVALID_ARGUMENT;
 
 	if (key->ecdsa_nid != BR_EC_secp256r1)
 		return SSH_ERR_INTERNAL_ERROR;
 
 	/* fetch signature */
-	if ((b = sshbuf_from(signature, signaturelen)) == NULL)
+	if ((b = sshbuf_from(sig, siglen)) == NULL)
 		return SSH_ERR_ALLOC_FAIL;
 	if ((details = calloc(1, sizeof(*details))) == NULL) {
 		ret = SSH_ERR_ALLOC_FAIL;
@@ -206,7 +299,7 @@ ssh_ecdsa_sk_verify(const struct sshkey *key,
 	/* parse signature */
 	if (sshbuf_get_bignum2_bytes_direct(sigbuf, &sig_r, &sig_rlen) != 0 ||
 	    sshbuf_get_bignum2_bytes_direct(sigbuf, &sig_s, &sig_slen) != 0 ||
-	    sig_rlen > sizeof(sig) / 2 || sig_slen > sizeof(sig) / 2) {
+	    sig_rlen > sizeof(rawsig) / 2 || sig_slen > sizeof(rawsig) / 2) {
 		ret = SSH_ERR_INVALID_FORMAT;
 		goto out;
 	}
@@ -231,11 +324,11 @@ ssh_ecdsa_sk_verify(const struct sshkey *key,
 		sshbuf_dump(webauthn_wrapper, stderr);
 	}
 #endif
-	slen = MAXIMUM(sig_rlen, sig_slen) * 2;
-	memset(sig, 0, slen / 2 - sig_rlen);
-	memcpy(sig + (slen / 2 - sig_rlen), sig_r, sig_rlen);
-	memset(sig + slen / 2, 0, slen / 2 - sig_slen);
-	memcpy(sig + (slen - sig_slen), sig_s, sig_slen);
+	rslen = MAXIMUM(sig_rlen, sig_slen) * 2;
+	memset(rawsig, 0, rslen / 2 - sig_rlen);
+	memcpy(rawsig + (rslen / 2 - sig_rlen), sig_r, sig_rlen);
+	memset(rawsig + rslen / 2, 0, rslen / 2 - sig_slen);
+	memcpy(rawsig + (rslen - sig_slen), sig_s, sig_slen);
 
 	/* Reconstruct data that was supposedly signed */
 	if ((original_signed = sshbuf_new()) == NULL) {
@@ -243,11 +336,11 @@ ssh_ecdsa_sk_verify(const struct sshkey *key,
 		goto out;
 	}
 	if (is_webauthn) {
-		if ((ret = webauthn_check_prepare_hash(data, datalen,
+		if ((ret = webauthn_check_prepare_hash(data, dlen,
 		    webauthn_origin, webauthn_wrapper, sig_flags, webauthn_exts,
 		    msghash, sizeof(msghash))) != 0)
 			goto out;
-	} else if ((ret = ssh_digest_memory(SSH_DIGEST_SHA256, data, datalen,
+	} else if ((ret = ssh_digest_memory(SSH_DIGEST_SHA256, data, dlen,
 	    msghash, sizeof(msghash))) != 0)
 		goto out;
 	/* Application value is hashed before signature */
@@ -282,7 +375,7 @@ ssh_ecdsa_sk_verify(const struct sshkey *key,
 
 	/* Verify it */
 	if (br_ecdsa_vrfy_raw_get_default()(br_ec_get_default(), sighash,
-	    sizeof(sighash), &key->ecdsa_pk->key, sig, slen) != 1) {
+	    sizeof(sighash), &key->ecdsa_pk->key, rawsig, rslen) != 1) {
 		ret = SSH_ERR_SIGNATURE_INVALID;
 		goto out;
 	}
@@ -304,9 +397,60 @@ ssh_ecdsa_sk_verify(const struct sshkey *key,
 	sshbuf_free(original_signed);
 	sshbuf_free(sigbuf);
 	sshbuf_free(b);
-	explicit_bzero(sig, sizeof(sig));
+	explicit_bzero(rawsig, sizeof(rawsig));
 	free(ktype);
 	return ret;
 }
+
+static const struct sshkey_impl_funcs sshkey_ecdsa_sk_funcs = {
+	/* .size = */		NULL,
+	/* .alloc = */		NULL,
+	/* .cleanup = */	ssh_ecdsa_sk_cleanup,
+	/* .equal = */		ssh_ecdsa_sk_equal,
+	/* .ssh_serialize_public = */ ssh_ecdsa_sk_serialize_public,
+	/* .ssh_deserialize_public = */ ssh_ecdsa_sk_deserialize_public,
+	/* .ssh_serialize_private = */ ssh_ecdsa_sk_serialize_private,
+	/* .ssh_deserialize_private = */ ssh_ecdsa_sk_deserialize_private,
+	/* .generate = */	NULL,
+	/* .copy_public = */	ssh_ecdsa_sk_copy_public,
+	/* .sign = */		NULL,
+	/* .verify = */		ssh_ecdsa_sk_verify,
+};
+
+const struct sshkey_impl sshkey_ecdsa_sk_impl = {
+	/* .name = */		"sk-ecdsa-sha2-nistp256@openssh.com",
+	/* .shortname = */	"ECDSA-SK",
+	/* .sigalg = */		NULL,
+	/* .type = */		KEY_ECDSA_SK,
+	/* .nid = */		BR_EC_secp256r1,
+	/* .cert = */		0,
+	/* .sigonly = */	0,
+	/* .keybits = */	256,
+	/* .funcs = */		&sshkey_ecdsa_sk_funcs,
+};
+
+const struct sshkey_impl sshkey_ecdsa_sk_cert_impl = {
+	/* .name = */		"sk-ecdsa-sha2-nistp256-cert-v01@openssh.com",
+	/* .shortname = */	"ECDSA-SK-CERT",
+	/* .sigalg = */		NULL,
+	/* .type = */		KEY_ECDSA_SK_CERT,
+	/* .nid = */		BR_EC_secp256r1,
+	/* .cert = */		1,
+	/* .sigonly = */	0,
+	/* .keybits = */	256,
+	/* .funcs = */		&sshkey_ecdsa_sk_funcs,
+};
+
+const struct sshkey_impl sshkey_ecdsa_sk_webauthn_impl = {
+	/* .name = */		"webauthn-sk-ecdsa-sha2-nistp256@openssh.com",
+	/* .shortname = */	"ECDSA-SK",
+	/* .sigalg = */		NULL,
+	/* .type = */		KEY_ECDSA_SK,
+	/* .nid = */		BR_EC_secp256r1,
+	/* .cert = */		0,
+	/* .sigonly = */	1,
+	/* .keybits = */	256,
+	/* .funcs = */		&sshkey_ecdsa_sk_funcs,
+};
 
 #endif /* WITH_BEARSSL */
