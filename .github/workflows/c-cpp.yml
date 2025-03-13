@@ -2,12 +2,13 @@ name: C/C++ CI
 
 on:
   push:
-    paths: [ '**.c', '**.h', '**.m4', '**.sh', '.github/**', '**/Makefile.in', 'configure.ac' ]
+    paths: [ '**.c', '**.h', '**.m4', '**.sh', '**/Makefile.in', 'configure.ac', '.github/configs', '.github/workflows/c-cpp.yaml' ]
   pull_request:
-    paths: [ '**.c', '**.h', '**.m4', '**.sh', '.github/**', '**/Makefile.in', 'configure.ac' ]
+    paths: [ '**.c', '**.h', '**.m4', '**.sh', '**/Makefile.in', 'configure.ac', '.github/configs', '.github/workflows/c-cpp.yaml' ]
 
 jobs:
   ci:
+    name: "${{ matrix.target }} ${{ matrix.config }}"
     if: github.repository != 'openssh/openssh-portable-selfhosted'
     strategy:
       fail-fast: false
@@ -16,9 +17,9 @@ jobs:
         target:
           - ubuntu-20.04
           - ubuntu-22.04
-          - macos-11
           - macos-12
           - macos-13
+          - macos-14
           - windows-2019
           - windows-2022
         config: [default]
@@ -75,9 +76,9 @@ jobs:
           - { target: ubuntu-22.04, config: selinux }
           - { target: ubuntu-22.04, config: kitchensink }
           - { target: ubuntu-22.04, config: without-bearssl }
-          - { target: macos-11, config: pam }
           - { target: macos-12, config: pam }
           - { target: macos-13, config: pam }
+          - { target: macos-14, config: pam }
     runs-on: ${{ matrix.target }}
     steps:
     - name: set cygwin git params

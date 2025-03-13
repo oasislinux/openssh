@@ -915,6 +915,7 @@ int main(void) { if (NSVersionOfRunTimeLibrary("System") >= (60 << 16))
 	AC_DEFINE([_PATH_BTMP], ["/var/log/btmp"], [log for bad login attempts])
 	AC_DEFINE([USE_BTMP])
 	AC_DEFINE([LINUX_OOM_ADJUST], [1], [Adjust Linux out-of-memory killer])
+	AC_DEFINE([SYSTEMD_NOTIFY], [1], [Have sshd notify systemd on start/reload])
 	inet6_default_4in6=yes
 	case `uname -r` in
 	1.*|2.0.*)
@@ -2074,18 +2075,6 @@ AC_ARG_WITH([security-key-builtin],
 	[  --with-security-key-builtin include builtin U2F/FIDO support],
 	[ enable_sk_internal=$withval ]
 )
-
-disable_ecdsa=
-AC_ARG_ENABLE([dsa-keys],
-	[  --disable-dsa-keys      disable DSA key support [no]],
-	[
-		if test "x$enableval" = "xno" ; then
-			disable_ecdsa=1
-		fi
-	]
-)
-test -z "$disable_ecdsa" &&
-    AC_DEFINE([WITH_DSA], [1], [Define if to enable DSA keys.])
 
 AC_SEARCH_LIBS([dlopen], [dl])
 AC_CHECK_FUNCS([dlopen])
