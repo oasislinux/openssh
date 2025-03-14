@@ -202,7 +202,7 @@ ssh_rsa_deserialize_public(const char *ktype, struct sshbuf *b,
 		goto out;
 	}
 	if (rsa_bitlen(rsa_n, rsa_nlen) < SSH_RSA_MINIMUM_MODULUS_SIZE) {
-		err = SSH_ERR_KEY_LENGTH;
+		ret = SSH_ERR_KEY_LENGTH;
 		goto out;
 	}
 
