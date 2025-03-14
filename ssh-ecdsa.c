@@ -1,4 +1,4 @@
-/* $OpenBSD: ssh-ecdsa.c,v 1.25 2022/10/28 00:44:44 djm Exp $ */
+/* $OpenBSD: ssh-ecdsa.c,v 1.26 2023/03/08 04:43:12 guenther Exp $ */
 /*
  * Copyright (c) 2000 Markus Friedl.  All rights reserved.
  * Copyright (c) 2010 Damien Miller.  All rights reserved.
@@ -252,7 +252,6 @@ ssh_ecdsa_deserialize_private(const char *ktype, struct sshbuf *b,
 	return r;
 }
 
-/* ARGSUSED */
 static int
 ssh_ecdsa_sign(struct sshkey *key,
     u_char **sigp, size_t *lenp,
@@ -331,7 +330,6 @@ ssh_ecdsa_sign(struct sshkey *key,
 	return ret;
 }
 
-/* ARGSUSED */
 static int
 ssh_ecdsa_verify(const struct sshkey *key,
     const u_char *sig, size_t siglen,
@@ -339,11 +337,12 @@ ssh_ecdsa_verify(const struct sshkey *key,
     struct sshkey_sig_details **detailsp)
 {
 	u_char rawsig[132];	/* maximum ECDSA signature length */
-	u_char digest[SSH_DIGEST_MAX_LENGTH];
-	size_t rslen, digestlen;
+	size_t rslen;
 	const u_char *sig_r = NULL, *sig_s = NULL;
 	size_t sig_rlen, sig_slen;
 	int hash_alg;
+	u_char digest[SSH_DIGEST_MAX_LENGTH];
+	size_t hlen;
 	int ret = SSH_ERR_INTERNAL_ERROR;
 	struct sshbuf *b = NULL, *sigbuf = NULL;
 	char *ktype = NULL;
@@ -354,7 +353,7 @@ ssh_ecdsa_verify(const struct sshkey *key,
 		return SSH_ERR_INVALID_ARGUMENT;
 
 	if ((hash_alg = sshkey_ec_nid_to_hash_alg(key->ecdsa_nid)) == -1 ||
-	    (digestlen = ssh_digest_bytes(hash_alg)) == 0)
+	    (hlen = ssh_digest_bytes(hash_alg)) == 0)
 		return SSH_ERR_INTERNAL_ERROR;
 
 	/* fetch signature */
@@ -395,8 +394,8 @@ ssh_ecdsa_verify(const struct sshkey *key,
 	    digest, sizeof(digest))) != 0)
 		goto out;
 
-	if (br_ecdsa_vrfy_raw_get_default()(br_ec_get_default(), digest,
-	    digestlen, &key->ecdsa_pk->key, rawsig, rslen) != 1) {
+	if (br_ecdsa_vrfy_raw_get_default()(br_ec_get_default(), digest, dlen,
+	    &key->ecdsa_pk->key, rawsig, rslen) != 1) {
 		ret = SSH_ERR_SIGNATURE_INVALID;
 		goto out;
 	}
