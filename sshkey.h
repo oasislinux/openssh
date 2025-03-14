@@ -275,10 +275,8 @@ const char *	 sshkey_curve_nid_to_name(int);
 u_int		 sshkey_curve_nid_to_bits(int);
 int		 sshkey_ecdsa_bits_to_nid(int);
 int		 sshkey_ec_nid_to_hash_alg(int nid);
-int		 sshkey_ec_validate_public(int nid, const u_char *q,
-    size_t qlen);
-int		 sshkey_ec_validate_private(int nid, const u_char *x,
-    size_t xlen);
+int		 sshkey_ec_validate_public(struct sshkey_ecdsa_pk *);
+int		 sshkey_ec_validate_private(struct sshkey_ecdsa_sk *);
 const char	*sshkey_ssh_name(const struct sshkey *);
 const char	*sshkey_ssh_name_plain(const struct sshkey *);
 int		 sshkey_names_valid2(const char *, int, int);
