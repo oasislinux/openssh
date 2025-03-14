@@ -30,6 +30,12 @@
 
 #ifdef WITH_BEARSSL
 #include <bearssl.h>
+
+/* Use BearSSL SHA256 instead of libc */
+#define SHA256Init(x)          br_sha256_init(x)
+#define SHA256Update(x, y, z)  br_sha256_update(x, y, z)
+#define SHA256Final(x, y)      br_sha256_out(y, x)
+#define SHA2_CTX               br_sha256_context
 #endif /* WITH_BEARSSL */
 
 /* #define SK_DEBUG 1 */
