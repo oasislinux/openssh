@@ -198,7 +198,8 @@ ssh_ecdsa_deserialize_public(const char *ktype, struct sshbuf *b,
 	ecdsa_pk->key.q = ecdsa_pk->data;
 	ecdsa_pk->key.qlen = ecdsa_qlen;
 	memcpy(ecdsa_pk->key.q, ecdsa_q, ecdsa_qlen);
-	if (sshkey_ec_validate_public(ecdsa_pk) != 0) {
+	if (sshkey_ec_validate_public(key->ecdsa_nid, ecdsa_q,
+	    ecdsa_qlen) != 0) {
 		r = SSH_ERR_KEY_INVALID_EC_VALUE;
 		goto out;
 	}
@@ -244,7 +245,8 @@ ssh_ecdsa_deserialize_private(const char *ktype, struct sshbuf *b,
 	ecdsa_sk->key.x = ecdsa_sk->data;
 	ecdsa_sk->key.xlen = ecdsa_xlen;
 	memcpy(ecdsa_sk->key.x, ecdsa_x, ecdsa_xlen);
-	if ((r = sshkey_ec_validate_private(ecdsa_sk)) != 0)
+	if ((r = sshkey_ec_validate_private(ecdsa_sk->key.curve,
+	    ecdsa_sk->key.x, ecdsa_sk->key.xlen)) != 0)
 		goto out;
 	/* success */
 	key->ecdsa_sk = ecdsa_sk;

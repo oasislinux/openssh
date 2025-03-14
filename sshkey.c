@@ -2568,33 +2568,29 @@ bn_less(const u_char *a, size_t alen, const u_char *b, size_t blen, u_int carry)
 }
 
 int
-sshkey_ec_validate_public(struct sshkey_ecdsa_pk *ecdsa_pk)
+sshkey_ec_validate_public(int nid, const u_char *q, size_t qlen)
 {
 	const br_ec_impl *ec;
-	int curve;
-	const u_char *q, *n;
-	size_t qlen, nlen, glen;
+	const u_char *n;
+	size_t nlen, glen;
 	size_t xoff, xlen, yoff, ylen;
 	u_char one[] = {1}, tmp[BR_EC_KBUF_PUB_MAX_SIZE];
 
-	curve = ecdsa_pk->key.curve;
-	q = ecdsa_pk->key.q;
-	qlen = ecdsa_pk->key.qlen;
 	ec = br_ec_get_default();
-	if ((ec->supported_curves & 1 << curve) == 0)
+	if ((ec->supported_curves & 1 << nid) == 0)
 		return SSH_ERR_LIBCRYPTO_ERROR;
 
-	if (curve == BR_EC_curve25519)
+	if (nid == BR_EC_curve25519)
 		return qlen == 32 ? 0 : SSH_ERR_KEY_INVALID_EC_VALUE;
 
-	ec->generator(curve, &glen);
-	n = ec->order(curve, &nlen);
+	ec->generator(nid, &glen);
+	n = ec->order(nid, &nlen);
 
 	/* We must check that the public key has the same size as
 	 * the generator, otherwise behavior of mul() below is
 	 * undefined. */
 	if (qlen > sizeof(tmp) || qlen != glen ||
-	    (xoff = ec->xoff(curve, &xlen)) != 1 ||
+	    (xoff = ec->xoff(nid, &xlen)) != 1 ||
 	    qlen != 1 + 2 * xlen || q[0] != 4)
 		return SSH_ERR_KEY_INVALID_EC_VALUE;
 	yoff = xoff + xlen;
@@ -2618,26 +2614,24 @@ sshkey_ec_validate_public(struct sshkey_ecdsa_pk *ecdsa_pk)
 	/* Attempt a multiplication to verify that the point is
 	 * actually on the curve. */
 	memcpy(tmp, q, qlen);
-	if (ec->mul(tmp, qlen, one, sizeof(one), curve) != 1)
+	if (ec->mul(tmp, qlen, one, sizeof(one), nid) != 1)
 		return SSH_ERR_KEY_INVALID_EC_VALUE;
 
 	return 0;
 }
 
 int
-sshkey_ec_validate_private(struct sshkey_ecdsa_sk *ecdsa_sk)
+sshkey_ec_validate_private(int nid, const u_char *x, size_t xlen)
 {
 	const br_ec_impl *ec;
-	const u_char *x, *n;
-	size_t xlen, nlen;
+	const u_char *n;
+	size_t nlen;
 
-	x = ecdsa_sk->key.x;
-	xlen = ecdsa_sk->key.xlen;
 	ec = br_ec_get_default();
-	if ((ec->supported_curves & 1 << ecdsa_sk->key.curve) == 0)
+	if ((ec->supported_curves & 1 << nid) == 0)
 		return SSH_ERR_LIBCRYPTO_ERROR;
 
-	n = ec->order(ecdsa_sk->key.curve, &nlen);
+	n = ec->order(nid, &nlen);
 
 	/* log2(private) > log2(order)/2 */
 	if (xlen <= nlen / 2 || xlen > nlen)
@@ -3410,8 +3404,10 @@ sshkey_parse_private_pem_fileblob(struct sshbuf *blob, int type,
 		memcpy(ecdsa_sk->key.x, ec->x, ec->xlen);
 
 		if (sshkey_curve_nid_to_name(ec->curve) == NULL ||
-		    sshkey_ec_validate_public(ecdsa_pk) != 0 ||
-		    sshkey_ec_validate_private(ecdsa_sk) != 0) {
+		    sshkey_ec_validate_public(ec->curve,
+		    ecdsa_pk->key.q, ecdsa_pk->key.qlen) != 0 ||
+		    sshkey_ec_validate_private(ec->curve,
+		    ecdsa_sk->key.x, ecdsa_sk->key.xlen) != 0) {
 			r = SSH_ERR_INVALID_FORMAT;
 			goto out;
 		}
