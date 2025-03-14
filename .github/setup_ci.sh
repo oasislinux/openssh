@@ -28,7 +28,6 @@ TARGETS=$@
 
 INSTALL_BEARSSL="v0.6"
 INSTALL_FIDO_PPA="no"
-INSTALL_LIBFIDO2="no"
 export DEBIAN_FRONTEND=noninteractive
 
 set -e
@@ -186,15 +185,15 @@ if [ "${INSTALL_HARDENED_MALLOC}" = "yes" ]; then
      make && sudo cp out/libhardened_malloc.so /usr/lib/)
 fi
 
-if [ "x" != "x$INSTALL_BEARSSL" ]; then
+if [ ! -z "${INSTALL_BEARSSL}" ]; then
     (cd ${HOME} &&
-     git clone -b ${BEARSSL_BRANCH} https://bearssl.org/git/BearSSL bearssl &&
+     git clone -b "${INSTALL_BEARSSL}" https://bearssl.org/git/BearSSL bearssl &&
      cd bearssl && make -j2 &&
      sudo cp build/libbearssl.a /usr/local/lib &&
      sudo cp inc/*.h /usr/local/include)
 fi
 
-if [ "x$INSTALL_LIBFIDO2" = "xyes" ]; then
+if [ ! -z "${INSTALL_LIBFIDO2}" ]; then
     (cd ${HOME} &&
      git clone https://github.com/oasislinux/libfido2.git &&
      cd libfido2 && cmake -DCMAKE_INSTALL_PREFIX=/usr . &&
