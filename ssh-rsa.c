@@ -201,6 +201,10 @@ ssh_rsa_deserialize_public(const char *ktype, struct sshbuf *b,
 		ret = SSH_ERR_LIBCRYPTO_ERROR;
 		goto out;
 	}
+	if (rsa_bitlen(rsa_n, rsa_nlen) < SSH_RSA_MINIMUM_MODULUS_SIZE) {
+		err = SSH_ERR_KEY_LENGTH;
+		goto out;
+	}
 
 	rsa_pk->key.e = rsa_pk->data;
 	rsa_pk->key.elen = rsa_elen;
@@ -212,8 +216,6 @@ ssh_rsa_deserialize_public(const char *ktype, struct sshbuf *b,
 
 	key->rsa_pk = rsa_pk;
 	rsa_pk = NULL;
-	if ((ret = sshkey_check_rsa_length(key, 0)) != 0)
-		goto out;
 #ifdef DEBUG_PK
 	/* XXX */
 #endif
