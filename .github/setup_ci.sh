@@ -189,8 +189,8 @@ if [ ! -z "${INSTALL_BEARSSL}" ]; then
     (cd ${HOME} &&
      git clone -b "${INSTALL_BEARSSL}" https://bearssl.org/git/BearSSL bearssl &&
      cd bearssl && make -j2 &&
-     sudo cp build/libbearssl.a /usr/local/lib &&
-     sudo cp inc/*.h /usr/local/include)
+     $SUDO cp build/libbearssl.a /usr/local/lib &&
+     $SUDO cp inc/*.h /usr/local/include)
 fi
 
 if [ ! -z "${INSTALL_LIBFIDO2}" ]; then
