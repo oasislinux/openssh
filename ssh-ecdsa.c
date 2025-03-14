@@ -173,15 +173,14 @@ ssh_ecdsa_deserialize_public(const char *ktype, struct sshbuf *b,
 	int r;
 	char *curve = NULL;
 	struct sshkey_ecdsa_pk *ecdsa_pk = NULL;
-	int ecdsa_nid;
 	const u_char *ecdsa_q;
 	size_t ecdsa_qlen;
 
-	if ((ecdsa_nid = sshkey_ecdsa_nid_from_name(ktype)) == -1)
+	if ((key->ecdsa_nid = sshkey_ecdsa_nid_from_name(ktype)) == -1)
 		return SSH_ERR_INVALID_ARGUMENT;
 	if ((r = sshbuf_get_cstring(b, &curve, NULL)) != 0)
 		goto out;
-	if (ecdsa_nid != sshkey_curve_name_to_nid(curve)) {
+	if (key->ecdsa_nid != sshkey_curve_name_to_nid(curve)) {
 		r = SSH_ERR_EC_CURVE_MISMATCH;
 		goto out;
 	}
@@ -195,20 +194,19 @@ ssh_ecdsa_deserialize_public(const char *ktype, struct sshbuf *b,
 		r = SSH_ERR_LIBCRYPTO_ERROR;
 		goto out;
 	}
-	ecdsa_pk->key.curve = ecdsa_nid;
+	ecdsa_pk->key.curve = key->ecdsa_nid;
 	ecdsa_pk->key.q = ecdsa_pk->data;
 	ecdsa_pk->key.qlen = ecdsa_qlen;
 	memcpy(ecdsa_pk->key.q, ecdsa_q, ecdsa_qlen);
-	if (sshkey_ec_validate_public(ecdsa_nid, ecdsa_q,
+	if (sshkey_ec_validate_public(key->ecdsa_nid, ecdsa_q,
 	    ecdsa_qlen) != 0) {
 		r = SSH_ERR_KEY_INVALID_EC_VALUE;
 		goto out;
 	}
-
-	/* success */
-	key->ecdsa_nid = ecdsa_nid;
 	key->ecdsa_pk = ecdsa_pk;
 	ecdsa_pk = NULL;
+
+	/* success */
 	r = 0;
 #ifdef DEBUG_PK
 	/* XXX */
@@ -330,6 +328,7 @@ ssh_ecdsa_sign(struct sshkey *key,
 		*lenp = len;
 	ret = 0;
  out:
+	explicit_bzero(rawsig, sizeof(rawsig));
 	explicit_bzero(digest, sizeof(digest));
 	sshbuf_free(b);
 	sshbuf_free(bb);
