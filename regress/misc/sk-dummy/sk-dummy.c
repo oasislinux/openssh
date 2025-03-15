@@ -32,10 +32,12 @@
 #include <bearssl.h>
 
 /* Use BearSSL SHA256 instead of libc */
-#define SHA256Init(x)          br_sha256_init(x)
-#define SHA256Update(x, y, z)  br_sha256_update(x, y, z)
-#define SHA256Final(x, y)      br_sha256_out(y, x)
-#define SHA2_CTX               br_sha256_context
+#undef SHA256_DIGEST_LENGTH
+#define SHA256_DIGEST_LENGTH	br_sha256_SIZE
+#define SHA256Init(x)		br_sha256_init(x)
+#define SHA256Update(x, y, z)	br_sha256_update(x, y, z)
+#define SHA256Final(x, y)	br_sha256_out(y, x)
+#define SHA2_CTX		br_sha256_context
 #elif defined(HAVE_SHA2_H)
 #include <sha2.h>
 #endif /* WITH_BEARSSL */
