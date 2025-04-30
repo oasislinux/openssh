@@ -510,9 +510,10 @@ ssh_rsa_verify(const struct sshkey *key,
 {
 	char *sigtype = NULL;
 	int hash_alg, want_alg, ret = SSH_ERR_INTERNAL_ERROR;
-	size_t len = 0, hlen;
+	size_t len = 0, hlen, xlen;
 	struct sshbuf *b = NULL;
 	u_char digest[SSH_DIGEST_MAX_LENGTH], sigdigest[SSH_DIGEST_MAX_LENGTH];
+	u_char x[(SSH_RSA_MAXIMUM_MODULUS_SIZE + 7) / 8];
 	const u_char *sigblob, *oid;
 
 	if (key == NULL || key->rsa_pk == NULL ||
@@ -555,6 +556,19 @@ ssh_rsa_verify(const struct sshkey *key,
 		ret = SSH_ERR_UNEXPECTED_TRAILING_DATA;
 		goto out;
 	}
+	/* br_rsa_pkcs1_vrfy expects a signature of exactly nlen */
+	xlen = key->rsa_pk->key.nlen;
+	if (xlen > sizeof(x)) {
+		ret = SSH_ERR_INTERNAL_ERROR;
+		goto out;
+	}
+	if (len > xlen) {
+		ret = SSH_ERR_KEY_BITS_MISMATCH;
+		goto out;
+	}
+	memset(x, 0, xlen - len);
+	memcpy(x + (xlen - len), sigblob, len);
+
 	if ((hlen = ssh_digest_bytes(hash_alg)) == 0) {
 		ret = SSH_ERR_INTERNAL_ERROR;
 		goto out;
@@ -563,7 +577,7 @@ ssh_rsa_verify(const struct sshkey *key,
 	    digest, sizeof(digest))) != 0)
 		goto out;
 
-	if (br_rsa_pkcs1_vrfy_get_default()(sigblob, len, oid, hlen,
+	if (br_rsa_pkcs1_vrfy_get_default()(x, xlen, oid, hlen,
 	    &key->rsa_pk->key, sigdigest) != 1 ||
 	    timingsafe_bcmp(digest, sigdigest, hlen) != 0) {
 		ret = SSH_ERR_SIGNATURE_INVALID;
@@ -573,6 +587,7 @@ ssh_rsa_verify(const struct sshkey *key,
  out:
 	free(sigtype);
 	sshbuf_free(b);
+	explicit_bzero(x, sizeof(x));
 	explicit_bzero(digest, sizeof(digest));
 	explicit_bzero(sigdigest, sizeof(sigdigest));
 	return ret;
