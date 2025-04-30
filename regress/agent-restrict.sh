@@ -119,7 +119,7 @@ expect_succeed() {
 	${SSH} $_extra -F $OBJ/ssh_proxy $_host true > $OBJ/ssh_output
 	_s=$?
 	test $_s -eq 0 || fail "host $_host $_case fail, exit status $_s"
-	diff $OBJ/ssh_output $OBJ/expect_${_id} ||
+	diff -u $OBJ/ssh_output $OBJ/expect_${_id} ||
 		fail "unexpected ssh output"
 }
 # ssh to host using explicit key, expecting success and that the key was
