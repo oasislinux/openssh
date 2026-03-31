@@ -1,4 +1,4 @@
-/* $OpenBSD: ssh-ecdsa.c,v 1.27 2024/08/15 00:51:51 djm Exp $ */
+/* $OpenBSD: ssh-ecdsa.c,v 1.28 2025/07/24 05:44:55 djm Exp $ */
 /*
  * Copyright (c) 2000 Markus Friedl.  All rights reserved.
  * Copyright (c) 2010 Damien Miller.  All rights reserved.
@@ -267,8 +267,7 @@ ssh_ecdsa_sign(struct sshkey *key,
 	const br_hash_class *hash_class = NULL;
 	u_char digest[SSH_DIGEST_MAX_LENGTH];
 	u_char rawsig[132];	/* maximum ECDSA signature length */
-	size_t len, rslen;
-	struct sshbuf *b = NULL, *bb = NULL;
+	size_t rslen;
 	int ret = SSH_ERR_INTERNAL_ERROR;
 
 	if (lenp != NULL)
@@ -306,12 +305,39 @@ ssh_ecdsa_sign(struct sshkey *key,
 		ret = SSH_ERR_LIBCRYPTO_ERROR;
 		goto out;
 	}
+
+	if ((ret = ssh_ecdsa_encode_store_sig(key, rawsig, rslen / 2,
+	    rawsig + rslen / 2, rslen / 2, sigp, lenp)) != 0)
+		goto out;
+	/* success */
+	ret = 0;
+ out:
+	explicit_bzero(rawsig, sizeof(rawsig));
+	explicit_bzero(digest, sizeof(digest));
+	return ret;
+}
+
+int
+ssh_ecdsa_encode_store_sig(const struct sshkey *key,
+    const u_char *sig_r, size_t sig_rlen,
+    const u_char *sig_s, size_t sig_slen,
+    u_char **sigp, size_t *lenp)
+{
+	struct sshbuf *b = NULL, *bb = NULL;
+	int ret;
+	size_t len;
+
+	if (lenp != NULL)
+		*lenp = 0;
+	if (sigp != NULL)
+		*sigp = NULL;
+
 	if ((bb = sshbuf_new()) == NULL || (b = sshbuf_new()) == NULL) {
 		ret = SSH_ERR_ALLOC_FAIL;
 		goto out;
 	}
-	if ((ret = sshbuf_put_bignum2_bytes(bb, rawsig, rslen / 2)) != 0 ||
-	    (ret = sshbuf_put_bignum2_bytes(bb, rawsig + rslen / 2, rslen / 2)) != 0)
+	if ((ret = sshbuf_put_bignum2_bytes(bb, sig_r, sig_rlen)) != 0 ||
+	    (ret = sshbuf_put_bignum2_bytes(bb, sig_s, sig_slen)) != 0)
 		goto out;
 	if ((ret = sshbuf_put_cstring(b, sshkey_ssh_name_plain(key))) != 0 ||
 	    (ret = sshbuf_put_stringb(b, bb)) != 0)
@@ -328,8 +354,6 @@ ssh_ecdsa_sign(struct sshkey *key,
 		*lenp = len;
 	ret = 0;
  out:
-	explicit_bzero(rawsig, sizeof(rawsig));
-	explicit_bzero(digest, sizeof(digest));
 	sshbuf_free(b);
 	sshbuf_free(bb);
 	return ret;

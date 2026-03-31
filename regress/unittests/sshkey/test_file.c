@@ -1,4 +1,4 @@
-/* 	$OpenBSD: test_file.c,v 1.12 2024/08/15 00:52:23 djm Exp $ */
+/* 	$OpenBSD: test_file.c,v 1.13 2025/05/06 06:05:48 djm Exp $ */
 /*
  * Regress test for sshkey.h key management API
  *
@@ -11,9 +11,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <stdio.h>
-#ifdef HAVE_STDINT_H
 #include <stdint.h>
-#endif
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>

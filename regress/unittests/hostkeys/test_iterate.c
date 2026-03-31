@@ -1,4 +1,4 @@
-/* 	$OpenBSD: test_iterate.c,v 1.9 2024/01/11 01:45:58 djm Exp $ */
+/* 	$OpenBSD: test_iterate.c,v 1.10 2025/05/06 06:05:48 djm Exp $ */
 /*
  * Regress test for hostfile.h hostkeys_foreach()
  *
@@ -9,9 +9,7 @@
 
 #include <sys/types.h>
 #include <stdio.h>
-#ifdef HAVE_STDINT_H
 #include <stdint.h>
-#endif
 #include <stdlib.h>
 #include <string.h>
 
@@ -89,9 +87,6 @@ check(struct hostkey_foreach_line *l, void *_ctx)
 	expected_keytype = (parse_key || expected->no_parse_keytype < 0) ?
 	    expected->l.keytype : expected->no_parse_keytype;
 
-	if (expected->l.keytype == KEY_DSA ||
-	    expected->no_parse_keytype == KEY_DSA)
-		skip = 1;
 #ifndef WITH_BEARSSL
 	if (expected->l.keytype == KEY_RSA ||
 	    expected->no_parse_keytype == KEY_RSA ||
@@ -147,14 +142,13 @@ prepare_expected(struct expected *expected, size_t n)
 	for (i = 0; i < n; i++) {
 		if (expected[i].key_file == NULL)
 			continue;
-		switch (expected[i].l.keytype) {
-		case KEY_DSA:
 #ifndef WITH_BEARSSL
+		switch (expected[i].l.keytype) {
 		case KEY_RSA:
 		case KEY_ECDSA:
-#endif /* WITH_BEARSSL */
 			continue;
 		}
+#endif /* WITH_BEARSSL */
 		ASSERT_INT_EQ(sshkey_load_public(
 		    test_data_file(expected[i].key_file), &expected[i].l.key,
 		    NULL), 0);
@@ -187,23 +181,9 @@ struct expected expected_full[] = {
 		NULL,				/* comment */
 		0,				/* note */
 	} },
-	{ "dsa_1.pub" , -1, -1, 0, HKF_MATCH_HOST, 0, 0, -1, {
-		NULL,
-		2,
-		HKF_STATUS_OK,
-		0,
-		NULL,
-		MRK_NONE,
-		"sisyphus.example.com",
-		NULL,
-		KEY_DSA,
-		NULL,	/* filled at runtime */
-		"DSA #1",
-		0,
-	} },
 	{ "ecdsa_1.pub" , -1, -1, 0, HKF_MATCH_HOST, 0, 0, -1, {
 		NULL,
-		3,
+		2,
 		HKF_STATUS_OK,
 		0,
 		NULL,
@@ -217,7 +197,7 @@ struct expected expected_full[] = {
 	} },
 	{ "ed25519_1.pub" , -1, -1, 0, HKF_MATCH_HOST, 0, 0, -1, {
 		NULL,
-		4,
+		3,
 		HKF_STATUS_OK,
 		0,
 		NULL,
@@ -231,7 +211,7 @@ struct expected expected_full[] = {
 	} },
 	{ "rsa_1.pub" , -1, -1, 0, HKF_MATCH_HOST, 0, 0, -1, {
 		NULL,
-		5,
+		4,
 		HKF_STATUS_OK,
 		0,
 		NULL,
@@ -245,7 +225,7 @@ struct expected expected_full[] = {
 	} },
 	{ NULL, -1, -1, 0, 0, 0, 0, -1, {
 		NULL,
-		6,
+		5,
 		HKF_STATUS_COMMENT,
 		0,
 		"",
@@ -259,7 +239,7 @@ struct expected expected_full[] = {
 	} },
 	{ NULL, -1, -1, 0, 0, 0, 0, -1, {
 		NULL,
-		7,
+		6,
 		HKF_STATUS_COMMENT,
 		0,
 		"# Plain host keys, hostnames + addresses",
@@ -271,23 +251,9 @@ struct expected expected_full[] = {
 		NULL,
 		0,
 	} },
-	{ "dsa_2.pub" , -1, -1, HKF_MATCH_HOST, 0, HKF_MATCH_IP, HKF_MATCH_IP, -1, {
-		NULL,
-		8,
-		HKF_STATUS_OK,
-		0,
-		NULL,
-		MRK_NONE,
-		"prometheus.example.com,192.0.2.1,2001:db8::1",
-		NULL,
-		KEY_DSA,
-		NULL,	/* filled at runtime */
-		"DSA #2",
-		0,
-	} },
 	{ "ecdsa_2.pub" , -1, -1, HKF_MATCH_HOST, 0, HKF_MATCH_IP, HKF_MATCH_IP, -1, {
 		NULL,
-		9,
+		7,
 		HKF_STATUS_OK,
 		0,
 		NULL,
@@ -301,7 +267,7 @@ struct expected expected_full[] = {
 	} },
 	{ "ed25519_2.pub" , -1, -1, HKF_MATCH_HOST, 0, HKF_MATCH_IP, HKF_MATCH_IP, -1, {
 		NULL,
-		10,
+		8,
 		HKF_STATUS_OK,
 		0,
 		NULL,
@@ -315,7 +281,7 @@ struct expected expected_full[] = {
 	} },
 	{ "rsa_2.pub" , -1, -1, HKF_MATCH_HOST, 0, HKF_MATCH_IP, HKF_MATCH_IP, -1, {
 		NULL,
-		11,
+		9,
 		HKF_STATUS_OK,
 		0,
 		NULL,
@@ -329,7 +295,7 @@ struct expected expected_full[] = {
 	} },
 	{ NULL, -1, -1, 0, 0, 0, 0, -1, {
 		NULL,
-		12,
+		10,
 		HKF_STATUS_COMMENT,
 		0,
 		"",
@@ -343,7 +309,7 @@ struct expected expected_full[] = {
 	} },
 	{ NULL, -1, -1, 0, 0, 0, 0, -1, {
 		NULL,
-		13,
+		11,
 		HKF_STATUS_COMMENT,
 		0,
 		"# Some hosts with wildcard names / IPs",
@@ -355,23 +321,9 @@ struct expected expected_full[] = {
 		NULL,
 		0,
 	} },
-	{ "dsa_3.pub" , -1, -1, HKF_MATCH_HOST, HKF_MATCH_HOST, HKF_MATCH_IP, HKF_MATCH_IP, -1, {
-		NULL,
-		14,
-		HKF_STATUS_OK,
-		0,
-		NULL,
-		MRK_NONE,
-		"*.example.com,192.0.2.*,2001:*",
-		NULL,
-		KEY_DSA,
-		NULL,	/* filled at runtime */
-		"DSA #3",
-		0,
-	} },
 	{ "ecdsa_3.pub" , -1, -1, HKF_MATCH_HOST, HKF_MATCH_HOST, HKF_MATCH_IP, HKF_MATCH_IP, -1, {
 		NULL,
-		15,
+		12,
 		HKF_STATUS_OK,
 		0,
 		NULL,
@@ -385,7 +337,7 @@ struct expected expected_full[] = {
 	} },
 	{ "ed25519_3.pub" , -1, -1, HKF_MATCH_HOST, HKF_MATCH_HOST, HKF_MATCH_IP, HKF_MATCH_IP, -1, {
 		NULL,
-		16,
+		13,
 		HKF_STATUS_OK,
 		0,
 		NULL,
@@ -399,7 +351,7 @@ struct expected expected_full[] = {
 	} },
 	{ "rsa_3.pub" , -1, -1, HKF_MATCH_HOST, HKF_MATCH_HOST, HKF_MATCH_IP, HKF_MATCH_IP, -1, {
 		NULL,
-		17,
+		14,
 		HKF_STATUS_OK,
 		0,
 		NULL,
@@ -413,7 +365,7 @@ struct expected expected_full[] = {
 	} },
 	{ NULL, -1, -1, 0, 0, 0, 0, -1, {
 		NULL,
-		18,
+		15,
 		HKF_STATUS_COMMENT,
 		0,
 		"",
@@ -427,7 +379,7 @@ struct expected expected_full[] = {
 	} },
 	{ NULL, -1, -1, 0, 0, 0, 0, -1, {
 		NULL,
-		19,
+		16,
 		HKF_STATUS_COMMENT,
 		0,
 		"# Hashed hostname and address entries",
@@ -439,23 +391,9 @@ struct expected expected_full[] = {
 		NULL,
 		0,
 	} },
-	{ "dsa_5.pub" , -1, -1, 0, HKF_MATCH_HOST|HKF_MATCH_HOST_HASHED, 0, 0, -1, {
-		NULL,
-		20,
-		HKF_STATUS_OK,
-		0,
-		NULL,
-		MRK_NONE,
-		NULL,
-		NULL,
-		KEY_DSA,
-		NULL,	/* filled at runtime */
-		"DSA #5",
-		0,
-	} },
 	{ "ecdsa_5.pub" , -1, -1, 0, HKF_MATCH_HOST|HKF_MATCH_HOST_HASHED, 0, 0, -1, {
 		NULL,
-		21,
+		17,
 		HKF_STATUS_OK,
 		0,
 		NULL,
@@ -469,7 +407,7 @@ struct expected expected_full[] = {
 	} },
 	{ "ed25519_5.pub" , -1, -1, 0, HKF_MATCH_HOST|HKF_MATCH_HOST_HASHED, 0, 0, -1, {
 		NULL,
-		22,
+		18,
 		HKF_STATUS_OK,
 		0,
 		NULL,
@@ -483,7 +421,7 @@ struct expected expected_full[] = {
 	} },
 	{ "rsa_5.pub" , -1, -1, 0, HKF_MATCH_HOST|HKF_MATCH_HOST_HASHED, 0, 0, -1, {
 		NULL,
-		23,
+		19,
 		HKF_STATUS_OK,
 		0,
 		NULL,
@@ -497,7 +435,7 @@ struct expected expected_full[] = {
 	} },
 	{ NULL, -1, -1, 0, 0, 0, 0, -1, {
 		NULL,
-		24,
+		20,
 		HKF_STATUS_COMMENT,
 		0,
 		"",
@@ -514,51 +452,9 @@ struct expected expected_full[] = {
 	 * hostname and addresses in the pre-hashed known_hosts are split
 	 * to separate lines.
 	 */
-	{ "dsa_6.pub" , -1, -1, HKF_MATCH_HOST|HKF_MATCH_HOST_HASHED, 0, 0, 0, -1, {
-		NULL,
-		25,
-		HKF_STATUS_OK,
-		0,
-		NULL,
-		MRK_NONE,
-		NULL,
-		NULL,
-		KEY_DSA,
-		NULL,	/* filled at runtime */
-		"DSA #6",
-		0,
-	} },
-	{ "dsa_6.pub" , -1, -1, 0, 0, HKF_MATCH_IP|HKF_MATCH_IP_HASHED, 0, -1, {
-		NULL,
-		26,
-		HKF_STATUS_OK,
-		0,
-		NULL,
-		MRK_NONE,
-		NULL,
-		NULL,
-		KEY_DSA,
-		NULL,	/* filled at runtime */
-		"DSA #6",
-		0,
-	} },
-	{ "dsa_6.pub" , -1, -1, 0, 0, 0, HKF_MATCH_IP|HKF_MATCH_IP_HASHED, -1, {
-		NULL,
-		27,
-		HKF_STATUS_OK,
-		0,
-		NULL,
-		MRK_NONE,
-		NULL,
-		NULL,
-		KEY_DSA,
-		NULL,	/* filled at runtime */
-		"DSA #6",
-		0,
-	} },
 	{ "ecdsa_6.pub" , -1, -1, HKF_MATCH_HOST|HKF_MATCH_HOST_HASHED, 0, 0, 0, -1, {
 		NULL,
-		28,
+		21,
 		HKF_STATUS_OK,
 		0,
 		NULL,
@@ -572,7 +468,7 @@ struct expected expected_full[] = {
 	} },
 	{ "ecdsa_6.pub" , -1, -1, 0, 0, HKF_MATCH_IP|HKF_MATCH_IP_HASHED, 0, -1, {
 		NULL,
-		29,
+		22,
 		HKF_STATUS_OK,
 		0,
 		NULL,
@@ -586,7 +482,7 @@ struct expected expected_full[] = {
 	} },
 	{ "ecdsa_6.pub" , -1, -1, 0, 0, 0, HKF_MATCH_IP|HKF_MATCH_IP_HASHED, -1, {
 		NULL,
-		30,
+		23,
 		HKF_STATUS_OK,
 		0,
 		NULL,
@@ -600,7 +496,7 @@ struct expected expected_full[] = {
 	} },
 	{ "ed25519_6.pub" , -1, -1, HKF_MATCH_HOST|HKF_MATCH_HOST_HASHED, 0, 0, 0, -1, {
 		NULL,
-		31,
+		24,
 		HKF_STATUS_OK,
 		0,
 		NULL,
@@ -614,7 +510,7 @@ struct expected expected_full[] = {
 	} },
 	{ "ed25519_6.pub" , -1, -1, 0, 0, HKF_MATCH_IP|HKF_MATCH_IP_HASHED, 0, -1, {
 		NULL,
-		32,
+		25,
 		HKF_STATUS_OK,
 		0,
 		NULL,
@@ -628,7 +524,7 @@ struct expected expected_full[] = {
 	} },
 	{ "ed25519_6.pub" , -1, -1, 0, 0, 0, HKF_MATCH_IP|HKF_MATCH_IP_HASHED, -1, {
 		NULL,
-		33,
+		26,
 		HKF_STATUS_OK,
 		0,
 		NULL,
@@ -642,7 +538,7 @@ struct expected expected_full[] = {
 	} },
 	{ "rsa_6.pub" , -1, -1, HKF_MATCH_HOST|HKF_MATCH_HOST_HASHED, 0, 0, 0, -1, {
 		NULL,
-		34,
+		27,
 		HKF_STATUS_OK,
 		0,
 		NULL,
@@ -656,7 +552,7 @@ struct expected expected_full[] = {
 	} },
 	{ "rsa_6.pub" , -1, -1, 0, 0, HKF_MATCH_IP|HKF_MATCH_IP_HASHED, 0, -1, {
 		NULL,
-		35,
+		28,
 		HKF_STATUS_OK,
 		0,
 		NULL,
@@ -670,7 +566,7 @@ struct expected expected_full[] = {
 	} },
 	{ "rsa_6.pub" , -1, -1, 0, 0, 0, HKF_MATCH_IP|HKF_MATCH_IP_HASHED, -1, {
 		NULL,
-		36,
+		29,
 		HKF_STATUS_OK,
 		0,
 		NULL,
@@ -684,7 +580,7 @@ struct expected expected_full[] = {
 	} },
 	{ NULL, -1, -1, 0, 0, 0, 0, -1, {
 		NULL,
-		37,
+		30,
 		HKF_STATUS_COMMENT,
 		0,
 		"",
@@ -698,7 +594,7 @@ struct expected expected_full[] = {
 	} },
 	{ NULL, -1, -1, 0, 0, 0, 0, -1, {
 		NULL,
-		38,
+		31,
 		HKF_STATUS_COMMENT,
 		0,
 		"",
@@ -712,7 +608,7 @@ struct expected expected_full[] = {
 	} },
 	{ NULL, -1, -1, 0, 0, 0, 0, -1, {
 		NULL,
-		39,
+		32,
 		HKF_STATUS_COMMENT,
 		0,
 		"# Revoked and CA keys",
@@ -726,7 +622,7 @@ struct expected expected_full[] = {
 	} },
 	{ "ed25519_4.pub" , -1, -1, 0, HKF_MATCH_HOST, 0, 0, -1, {
 		NULL,
-		40,
+		33,
 		HKF_STATUS_OK,
 		0,
 		NULL,
@@ -740,7 +636,7 @@ struct expected expected_full[] = {
 	} },
 	{ "ecdsa_4.pub" , -1, -1, HKF_MATCH_HOST, 0, 0, 0, -1, {
 		NULL,
-		41,
+		34,
 		HKF_STATUS_OK,
 		0,
 		NULL,
@@ -752,23 +648,9 @@ struct expected expected_full[] = {
 		"ECDSA #4",
 		0,
 	} },
-	{ "dsa_4.pub" , -1, -1, HKF_MATCH_HOST, HKF_MATCH_HOST, 0, 0, -1, {
-		NULL,
-		42,
-		HKF_STATUS_OK,
-		0,
-		NULL,
-		MRK_CA,
-		"*.example.com",
-		NULL,
-		KEY_DSA,
-		NULL,	/* filled at runtime */
-		"DSA #4",
-		0,
-	} },
 	{ NULL, -1, -1, 0, 0, 0, 0, -1, {
 		NULL,
-		43,
+		35,
 		HKF_STATUS_COMMENT,
 		0,
 		"",
@@ -782,7 +664,7 @@ struct expected expected_full[] = {
 	} },
 	{ NULL, -1, -1, 0, 0, 0, 0, -1, {
 		NULL,
-		44,
+		36,
 		HKF_STATUS_COMMENT,
 		0,
 		"# Some invalid lines",
@@ -796,7 +678,7 @@ struct expected expected_full[] = {
 	} },
 	{ NULL, -1, -1, 0, 0, 0, 0, -1, {
 		NULL,
-		45,
+		37,
 		HKF_STATUS_INVALID,
 		0,
 		NULL,
@@ -810,7 +692,7 @@ struct expected expected_full[] = {
 	} },
 	{ NULL, -1, -1, 0, HKF_MATCH_HOST, 0, 0, -1, {
 		NULL,
-		46,
+		38,
 		HKF_STATUS_INVALID,
 		0,
 		NULL,
@@ -824,7 +706,7 @@ struct expected expected_full[] = {
 	} },
 	{ NULL, -1, -1, HKF_MATCH_HOST, 0, 0, 0, -1, {
 		NULL,
-		47,
+		39,
 		HKF_STATUS_INVALID,
 		0,
 		NULL,
@@ -836,9 +718,9 @@ struct expected expected_full[] = {
 		NULL,
 		0,
 	} },
-	{ NULL, -1, -1, 0, HKF_MATCH_HOST, 0, 0, -1, {
+	{ NULL, HKF_STATUS_OK, KEY_ED25519, 0, HKF_MATCH_HOST, 0, 0, -1, {
 		NULL,
-		48,
+		40,
 		HKF_STATUS_INVALID,	/* Would be ok if key not parsed */
 		0,
 		NULL,
@@ -852,7 +734,7 @@ struct expected expected_full[] = {
 	} },
 	{ NULL, -1, -1, 0, HKF_MATCH_HOST, 0, 0, -1, {
 		NULL,
-		49,
+		41,
 		HKF_STATUS_INVALID,
 		0,
 		NULL,
@@ -866,7 +748,7 @@ struct expected expected_full[] = {
 	} },
 	{ NULL, HKF_STATUS_OK, KEY_RSA, HKF_MATCH_HOST, 0, 0, 0, -1, {
 		NULL,
-		50,
+		42,
 		HKF_STATUS_INVALID,	/* Would be ok if key not parsed */
 		0,
 		NULL,

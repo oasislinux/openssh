@@ -368,6 +368,10 @@
    don't. */
 #undef HAVE_DECL_H_ERRNO
 
+/* Define to 1 if you have the declaration of `INFINITY', and to 0 if you
+   don't. */
+#undef HAVE_DECL_INFINITY
+
 /* Define to 1 if you have the declaration of `le32toh', and to 0 if you
    don't. */
 #undef HAVE_DECL_LE32TOH
@@ -439,6 +443,10 @@
 /* Define to 1 if you have the declaration of `_getshort', and to 0 if you
    don't. */
 #undef HAVE_DECL__GETSHORT
+
+/* Define to 1 if you have the declaration of `__builtin_inff', and to 0 if
+   you don't. */
+#undef HAVE_DECL___BUILTIN_INFF
 
 /* Define if you have /dev/ptmx */
 #undef HAVE_DEV_PTMX
@@ -568,6 +576,9 @@
 
 /* Define to 1 if the system has the type `fsfilcnt_t'. */
 #undef HAVE_FSFILCNT_T
+
+/* Define to 1 if you have the `fstatat' function. */
+#undef HAVE_FSTATAT
 
 /* Define to 1 if you have the `fstatfs' function. */
 #undef HAVE_FSTATFS
@@ -933,6 +944,12 @@
 /* Define to 1 if you have the `ngetaddrinfo' function. */
 #undef HAVE_NGETADDRINFO
 
+/* Define to 1 if you have the `nlist' function. */
+#undef HAVE_NLIST
+
+/* Define to 1 if you have the <nlist.h> header file. */
+#undef HAVE_NLIST_H
+
 /* Define to 1 if you have the `nl_langinfo' function. */
 #undef HAVE_NL_LANGINFO
 
@@ -1277,6 +1294,9 @@
 /* define if you have struct addrinfo data type */
 #undef HAVE_STRUCT_ADDRINFO
 
+/* Define to 1 if `d_type' is a member of `struct dirent'. */
+#undef HAVE_STRUCT_DIRENT_D_TYPE
+
 /* define if you have struct in6_addr data type */
 #undef HAVE_STRUCT_IN6_ADDR
 
@@ -1496,6 +1516,9 @@
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
 
+/* Define to 1 if you have the `unlinkat' function. */
+#undef HAVE_UNLINKAT
+
 /* Define to 1 if you have the `unsetenv' function. */
 #undef HAVE_UNSETENV
 
@@ -1710,6 +1733,9 @@
 
 /* System dirs owned by bin (uid 2) */
 #undef PLATFORM_SYS_DIR_UID
+
+/* need inet in pledge for setsockopt IP_TOS */
+#undef PLEDGE_EXTRA_INET
 
 /* read(1) can return 0 for a non-closed fd */
 #undef PTY_ZEROREAD

@@ -1,8 +1,17 @@
 #!/bin/sh
 
+config="$1"
+target="$2"
+
 PACKAGES=""
 
- . .github/configs $@
+echo Running as:
+id
+
+echo Environment:
+set
+
+ . .github/configs ${config}
 
 host=`./config.guess`
 echo "config.guess: $host"
@@ -10,9 +19,17 @@ case "$host" in
 *cygwin)
 	PACKAGER=setup
 	echo Setting CYGWIN system environment variable.
-	setx CYGWIN "binmode"
+	setx CYGWIN "winsymlinks:native"
 	echo Removing extended ACLs so umask works as expected.
+	set -x
 	setfacl -b . regress
+	icacls regress /c /t /q /Inheritance:d
+	icacls regress /c /t /q /Grant ${USERNAME}:F
+	icacls regress /c /t /q /Remove:g "Authenticated Users" \
+	     BUILTIN\\Administrators BUILTIN Everyone System Users
+	takeown /F regress
+	icacls regress
+	set +x
 	PACKAGES="$PACKAGES,autoconf,automake,cygwin-devel,gcc-core"
 	PACKAGES="$PACKAGES,make,zlib-devel"
 	;;
@@ -24,7 +41,7 @@ case "$host" in
 	PACKAGER=apt
 esac
 
-TARGETS=$@
+TARGETS=${config}
 
 INSTALL_BEARSSL="v0.6"
 INSTALL_FIDO_PPA="no"
@@ -126,7 +143,7 @@ for TARGET in $TARGETS; do
         INSTALL_BEARSSL=""
         ;;
     putty-*)
-	INSTALL_PUTTY=$(echo "${TARGET}" | cut -f2 -d-)
+	INSTALL_PUTTY=0.83
 	PACKAGES="${PACKAGES} cmake"
 	;;
     valgrind*)
@@ -163,7 +180,8 @@ while [ ! -z "$PACKAGES" ] && [ "$tries" -gt "0" ]; do
 	fi
 	;;
     setup)
-	if /cygdrive/c/setup.exe -q -P `echo "$PACKAGES" | tr ' ' ,`; then
+	setup="/cygdrive/$(echo "${CYGWIN_SETUP}" | tr -d : | tr '\' '/')"
+	if "${setup}" -q -P `echo "$PACKAGES" | tr ' ' ,`; then
 		PACKAGES=""
 	fi
 	;;
@@ -217,23 +235,23 @@ if [ ! -z "${INSTALL_ZLIB}" ]; then
 fi
 
 if [ ! -z "${INSTALL_PUTTY}" ]; then
-    ver="${INSTALL_PUTTY}"
-    case "${INSTALL_PUTTY}" in
-    snapshot)
-	tarball=putty.tar.gz
-	(cd /tmp && wget https://tartarus.org/~simon/putty-snapshots/${tarball})
-	;;
-    *)
-	tarball=putty-${ver}.tar.gz
-	(cd /tmp && wget https://the.earth.li/~sgtatham/putty/${ver}/${tarball})
+	.github/install_putty.sh "${INSTALL_PUTTY}"
+fi
+
+# If we're running on an ephemeral VM, set a random password and set
+# up to run the password auth test.
+if [ ! -z "${EPHEMERAL_VM}" ]; then
+
+    # This is the github "target" as specified in the yml file.
+    # In particular, ubuntu-latest sets the password field to the locked
+    # value, so unless we reset it here most of the tests will fail.
+    case "${target}" in
+    ubuntu-*)
+	echo ${target} target: setting random password.
+	openssl rand -base64 9 >regress/password
+	pw=$(tr -d '\n' <regress/password | openssl passwd -6 -stdin)
+	sudo usermod --password "${pw}" runner
+	sudo usermod --unlock runner
 	;;
     esac
-    (cd ${HOME} && tar xfz /tmp/${tarball} && cd putty-*
-     if [ -f CMakeLists.txt ]; then
-	cmake . && cmake --build . && sudo cmake --build . --target install
-     else
-	./configure && make && sudo make install
-     fi
-    )
-    /usr/local/bin/plink -V
 fi

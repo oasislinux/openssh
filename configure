@@ -686,6 +686,8 @@ LIBWTMPDB
 LIBEDIT
 LDNSCONFIG
 LIBOBJS
+TESTLIBS
+COMPATINCLUDES
 LD
 PATH_PASSWD_PROG
 STARTUP_SCRIPT_SHELL
@@ -1929,63 +1931,6 @@ printf "%s\n" "$ac_res" >&6; }
 
 } # ac_fn_c_check_func
 
-# ac_fn_c_check_type LINENO TYPE VAR INCLUDES
-# -------------------------------------------
-# Tests whether TYPE exists after having included INCLUDES, setting cache
-# variable VAR accordingly.
-ac_fn_c_check_type ()
-{
-  as_lineno=${as_lineno-"$1"} as_lineno_stack=as_lineno_stack=$as_lineno_stack
-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for $2" >&5
-printf %s "checking for $2... " >&6; }
-if eval test \${$3+y}
-then :
-  printf %s "(cached) " >&6
-else $as_nop
-  eval "$3=no"
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-$4
-int
-main (void)
-{
-if (sizeof ($2))
-	 return 0;
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"
-then :
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-$4
-int
-main (void)
-{
-if (sizeof (($2)))
-	    return 0;
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"
-then :
-
-else $as_nop
-  eval "$3=yes"
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
-fi
-eval ac_res=\$$3
-	       { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
-printf "%s\n" "$ac_res" >&6; }
-  eval $as_lineno_stack; ${as_lineno_stack:+:} unset as_lineno
-
-} # ac_fn_c_check_type
-
 # ac_fn_c_check_member LINENO AGGR MEMBER VAR INCLUDES
 # ----------------------------------------------------
 # Tries to find if the field MEMBER exists in type AGGR, after including
@@ -2045,6 +1990,63 @@ printf "%s\n" "$ac_res" >&6; }
   eval $as_lineno_stack; ${as_lineno_stack:+:} unset as_lineno
 
 } # ac_fn_c_check_member
+
+# ac_fn_c_check_type LINENO TYPE VAR INCLUDES
+# -------------------------------------------
+# Tests whether TYPE exists after having included INCLUDES, setting cache
+# variable VAR accordingly.
+ac_fn_c_check_type ()
+{
+  as_lineno=${as_lineno-"$1"} as_lineno_stack=as_lineno_stack=$as_lineno_stack
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for $2" >&5
+printf %s "checking for $2... " >&6; }
+if eval test \${$3+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+  eval "$3=no"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+$4
+int
+main (void)
+{
+if (sizeof ($2))
+	 return 0;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"
+then :
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+$4
+int
+main (void)
+{
+if (sizeof (($2)))
+	    return 0;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"
+then :
+
+else $as_nop
+  eval "$3=yes"
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+eval ac_res=\$$3
+	       { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
+printf "%s\n" "$ac_res" >&6; }
+  eval $as_lineno_stack; ${as_lineno_stack:+:} unset as_lineno
+
+} # ac_fn_c_check_type
 
 # ac_fn_c_compute_int LINENO EXPR VAR INCLUDES
 # --------------------------------------------
@@ -6103,8 +6105,14 @@ printf %s "checking clang version... " >&6; }
 printf "%s\n" "$CLANG_VER" >&6; }
 
 	{
-	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $CC supports compile flag -pipe" >&5
+  ossh_cache_var=ossh_cv_cflag__pipe
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $CC supports compile flag -pipe" >&5
 printf %s "checking if $CC supports compile flag -pipe... " >&6; }
+if eval test \${$ossh_cache_var+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+
 	saved_CFLAGS="$CFLAGS"
 	CFLAGS="$CFLAGS $WERROR -pipe"
 	_define_flag=""
@@ -6169,14 +6177,12 @@ then :
 
 if $ac_cv_path_EGREP -i "unrecognized option|warning.*ignored" conftest.err >/dev/null
 then
-		{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+		eval "$ossh_cache_var=no"
 		CFLAGS="$saved_CFLAGS"
 else
 				if test "$cross_compiling" = yes
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  CFLAGS="$saved_CFLAGS $_define_flag"
 else $as_nop
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -6236,12 +6242,10 @@ int main(int argc, char **argv) {
 _ACEOF
 if ac_fn_c_try_run "$LINENO"
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  CFLAGS="$saved_CFLAGS $_define_flag"
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no, fails at run time" >&5
-printf "%s\n" "no, fails at run time" >&6; }
+   eval "$ossh_cache_var='no, fails at run time'"
 			  CFLAGS="$saved_CFLAGS"
 fi
 rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
@@ -6250,16 +6254,26 @@ fi
 
 fi
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+   eval "$ossh_cache_var=no"
 		  CFLAGS="$saved_CFLAGS"
 
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+
+fi
+eval ac_res=\$$ossh_cache_var
+	       { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
+printf "%s\n" "$ac_res" >&6; }
 }
 	{
-	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $CC supports compile flag -Wunknown-warning-option" >&5
+  ossh_cache_var=ossh_cv_cflag__Wunknown_warning_option
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $CC supports compile flag -Wunknown-warning-option" >&5
 printf %s "checking if $CC supports compile flag -Wunknown-warning-option... " >&6; }
+if eval test \${$ossh_cache_var+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+
 	saved_CFLAGS="$CFLAGS"
 	CFLAGS="$CFLAGS $WERROR -Wunknown-warning-option"
 	_define_flag=""
@@ -6324,14 +6338,12 @@ then :
 
 if $ac_cv_path_EGREP -i "unrecognized option|warning.*ignored" conftest.err >/dev/null
 then
-		{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+		eval "$ossh_cache_var=no"
 		CFLAGS="$saved_CFLAGS"
 else
 				if test "$cross_compiling" = yes
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  CFLAGS="$saved_CFLAGS $_define_flag"
 else $as_nop
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -6391,12 +6403,10 @@ int main(int argc, char **argv) {
 _ACEOF
 if ac_fn_c_try_run "$LINENO"
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  CFLAGS="$saved_CFLAGS $_define_flag"
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no, fails at run time" >&5
-printf "%s\n" "no, fails at run time" >&6; }
+   eval "$ossh_cache_var='no, fails at run time'"
 			  CFLAGS="$saved_CFLAGS"
 fi
 rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
@@ -6405,16 +6415,26 @@ fi
 
 fi
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+   eval "$ossh_cache_var=no"
 		  CFLAGS="$saved_CFLAGS"
 
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+
+fi
+eval ac_res=\$$ossh_cache_var
+	       { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
+printf "%s\n" "$ac_res" >&6; }
 }
 	{
-	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $CC supports compile flag -Wno-error=format-truncation" >&5
+  ossh_cache_var=ossh_cv_cflag__Wno_error_format_truncation
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $CC supports compile flag -Wno-error=format-truncation" >&5
 printf %s "checking if $CC supports compile flag -Wno-error=format-truncation... " >&6; }
+if eval test \${$ossh_cache_var+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+
 	saved_CFLAGS="$CFLAGS"
 	CFLAGS="$CFLAGS $WERROR -Wno-error=format-truncation"
 	_define_flag=""
@@ -6479,14 +6499,12 @@ then :
 
 if $ac_cv_path_EGREP -i "unrecognized option|warning.*ignored" conftest.err >/dev/null
 then
-		{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+		eval "$ossh_cache_var=no"
 		CFLAGS="$saved_CFLAGS"
 else
 				if test "$cross_compiling" = yes
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  CFLAGS="$saved_CFLAGS $_define_flag"
 else $as_nop
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -6546,12 +6564,10 @@ int main(int argc, char **argv) {
 _ACEOF
 if ac_fn_c_try_run "$LINENO"
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  CFLAGS="$saved_CFLAGS $_define_flag"
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no, fails at run time" >&5
-printf "%s\n" "no, fails at run time" >&6; }
+   eval "$ossh_cache_var='no, fails at run time'"
 			  CFLAGS="$saved_CFLAGS"
 fi
 rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
@@ -6560,16 +6576,26 @@ fi
 
 fi
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+   eval "$ossh_cache_var=no"
 		  CFLAGS="$saved_CFLAGS"
 
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+
+fi
+eval ac_res=\$$ossh_cache_var
+	       { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
+printf "%s\n" "$ac_res" >&6; }
 }
 	{
-	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $CC supports compile flag -Qunused-arguments" >&5
+  ossh_cache_var=ossh_cv_cflag__Qunused_arguments
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $CC supports compile flag -Qunused-arguments" >&5
 printf %s "checking if $CC supports compile flag -Qunused-arguments... " >&6; }
+if eval test \${$ossh_cache_var+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+
 	saved_CFLAGS="$CFLAGS"
 	CFLAGS="$CFLAGS $WERROR -Qunused-arguments"
 	_define_flag=""
@@ -6634,14 +6660,12 @@ then :
 
 if $ac_cv_path_EGREP -i "unrecognized option|warning.*ignored" conftest.err >/dev/null
 then
-		{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+		eval "$ossh_cache_var=no"
 		CFLAGS="$saved_CFLAGS"
 else
 				if test "$cross_compiling" = yes
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  CFLAGS="$saved_CFLAGS $_define_flag"
 else $as_nop
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -6701,12 +6725,10 @@ int main(int argc, char **argv) {
 _ACEOF
 if ac_fn_c_try_run "$LINENO"
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  CFLAGS="$saved_CFLAGS $_define_flag"
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no, fails at run time" >&5
-printf "%s\n" "no, fails at run time" >&6; }
+   eval "$ossh_cache_var='no, fails at run time'"
 			  CFLAGS="$saved_CFLAGS"
 fi
 rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
@@ -6715,16 +6737,26 @@ fi
 
 fi
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+   eval "$ossh_cache_var=no"
 		  CFLAGS="$saved_CFLAGS"
 
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+
+fi
+eval ac_res=\$$ossh_cache_var
+	       { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
+printf "%s\n" "$ac_res" >&6; }
 }
 	{
-	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $CC supports compile flag -Wall" >&5
+  ossh_cache_var=ossh_cv_cflag__Wall
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $CC supports compile flag -Wall" >&5
 printf %s "checking if $CC supports compile flag -Wall... " >&6; }
+if eval test \${$ossh_cache_var+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+
 	saved_CFLAGS="$CFLAGS"
 	CFLAGS="$CFLAGS $WERROR -Wall"
 	_define_flag=""
@@ -6789,14 +6821,12 @@ then :
 
 if $ac_cv_path_EGREP -i "unrecognized option|warning.*ignored" conftest.err >/dev/null
 then
-		{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+		eval "$ossh_cache_var=no"
 		CFLAGS="$saved_CFLAGS"
 else
 				if test "$cross_compiling" = yes
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  CFLAGS="$saved_CFLAGS $_define_flag"
 else $as_nop
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -6856,12 +6886,10 @@ int main(int argc, char **argv) {
 _ACEOF
 if ac_fn_c_try_run "$LINENO"
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  CFLAGS="$saved_CFLAGS $_define_flag"
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no, fails at run time" >&5
-printf "%s\n" "no, fails at run time" >&6; }
+   eval "$ossh_cache_var='no, fails at run time'"
 			  CFLAGS="$saved_CFLAGS"
 fi
 rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
@@ -6870,16 +6898,26 @@ fi
 
 fi
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+   eval "$ossh_cache_var=no"
 		  CFLAGS="$saved_CFLAGS"
 
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+
+fi
+eval ac_res=\$$ossh_cache_var
+	       { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
+printf "%s\n" "$ac_res" >&6; }
 }
 	{
-	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $CC supports compile flag -Wextra" >&5
+  ossh_cache_var=ossh_cv_cflag__Wextra
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $CC supports compile flag -Wextra" >&5
 printf %s "checking if $CC supports compile flag -Wextra... " >&6; }
+if eval test \${$ossh_cache_var+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+
 	saved_CFLAGS="$CFLAGS"
 	CFLAGS="$CFLAGS $WERROR -Wextra"
 	_define_flag=""
@@ -6944,14 +6982,12 @@ then :
 
 if $ac_cv_path_EGREP -i "unrecognized option|warning.*ignored" conftest.err >/dev/null
 then
-		{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+		eval "$ossh_cache_var=no"
 		CFLAGS="$saved_CFLAGS"
 else
 				if test "$cross_compiling" = yes
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  CFLAGS="$saved_CFLAGS $_define_flag"
 else $as_nop
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -7011,12 +7047,10 @@ int main(int argc, char **argv) {
 _ACEOF
 if ac_fn_c_try_run "$LINENO"
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  CFLAGS="$saved_CFLAGS $_define_flag"
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no, fails at run time" >&5
-printf "%s\n" "no, fails at run time" >&6; }
+   eval "$ossh_cache_var='no, fails at run time'"
 			  CFLAGS="$saved_CFLAGS"
 fi
 rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
@@ -7025,16 +7059,26 @@ fi
 
 fi
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+   eval "$ossh_cache_var=no"
 		  CFLAGS="$saved_CFLAGS"
 
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+
+fi
+eval ac_res=\$$ossh_cache_var
+	       { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
+printf "%s\n" "$ac_res" >&6; }
 }
 	{
-	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $CC supports compile flag -Wpointer-arith" >&5
+  ossh_cache_var=ossh_cv_cflag__Wpointer_arith
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $CC supports compile flag -Wpointer-arith" >&5
 printf %s "checking if $CC supports compile flag -Wpointer-arith... " >&6; }
+if eval test \${$ossh_cache_var+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+
 	saved_CFLAGS="$CFLAGS"
 	CFLAGS="$CFLAGS $WERROR -Wpointer-arith"
 	_define_flag=""
@@ -7099,14 +7143,12 @@ then :
 
 if $ac_cv_path_EGREP -i "unrecognized option|warning.*ignored" conftest.err >/dev/null
 then
-		{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+		eval "$ossh_cache_var=no"
 		CFLAGS="$saved_CFLAGS"
 else
 				if test "$cross_compiling" = yes
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  CFLAGS="$saved_CFLAGS $_define_flag"
 else $as_nop
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -7166,12 +7208,10 @@ int main(int argc, char **argv) {
 _ACEOF
 if ac_fn_c_try_run "$LINENO"
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  CFLAGS="$saved_CFLAGS $_define_flag"
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no, fails at run time" >&5
-printf "%s\n" "no, fails at run time" >&6; }
+   eval "$ossh_cache_var='no, fails at run time'"
 			  CFLAGS="$saved_CFLAGS"
 fi
 rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
@@ -7180,16 +7220,26 @@ fi
 
 fi
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+   eval "$ossh_cache_var=no"
 		  CFLAGS="$saved_CFLAGS"
 
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+
+fi
+eval ac_res=\$$ossh_cache_var
+	       { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
+printf "%s\n" "$ac_res" >&6; }
 }
 	{
-	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $CC supports compile flag -Wuninitialized" >&5
+  ossh_cache_var=ossh_cv_cflag__Wuninitialized
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $CC supports compile flag -Wuninitialized" >&5
 printf %s "checking if $CC supports compile flag -Wuninitialized... " >&6; }
+if eval test \${$ossh_cache_var+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+
 	saved_CFLAGS="$CFLAGS"
 	CFLAGS="$CFLAGS $WERROR -Wuninitialized"
 	_define_flag=""
@@ -7254,14 +7304,12 @@ then :
 
 if $ac_cv_path_EGREP -i "unrecognized option|warning.*ignored" conftest.err >/dev/null
 then
-		{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+		eval "$ossh_cache_var=no"
 		CFLAGS="$saved_CFLAGS"
 else
 				if test "$cross_compiling" = yes
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  CFLAGS="$saved_CFLAGS $_define_flag"
 else $as_nop
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -7321,12 +7369,10 @@ int main(int argc, char **argv) {
 _ACEOF
 if ac_fn_c_try_run "$LINENO"
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  CFLAGS="$saved_CFLAGS $_define_flag"
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no, fails at run time" >&5
-printf "%s\n" "no, fails at run time" >&6; }
+   eval "$ossh_cache_var='no, fails at run time'"
 			  CFLAGS="$saved_CFLAGS"
 fi
 rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
@@ -7335,16 +7381,26 @@ fi
 
 fi
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+   eval "$ossh_cache_var=no"
 		  CFLAGS="$saved_CFLAGS"
 
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+
+fi
+eval ac_res=\$$ossh_cache_var
+	       { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
+printf "%s\n" "$ac_res" >&6; }
 }
 	{
-	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $CC supports compile flag -Wsign-compare" >&5
+  ossh_cache_var=ossh_cv_cflag__Wsign_compare
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $CC supports compile flag -Wsign-compare" >&5
 printf %s "checking if $CC supports compile flag -Wsign-compare... " >&6; }
+if eval test \${$ossh_cache_var+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+
 	saved_CFLAGS="$CFLAGS"
 	CFLAGS="$CFLAGS $WERROR -Wsign-compare"
 	_define_flag=""
@@ -7409,14 +7465,12 @@ then :
 
 if $ac_cv_path_EGREP -i "unrecognized option|warning.*ignored" conftest.err >/dev/null
 then
-		{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+		eval "$ossh_cache_var=no"
 		CFLAGS="$saved_CFLAGS"
 else
 				if test "$cross_compiling" = yes
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  CFLAGS="$saved_CFLAGS $_define_flag"
 else $as_nop
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -7476,12 +7530,10 @@ int main(int argc, char **argv) {
 _ACEOF
 if ac_fn_c_try_run "$LINENO"
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  CFLAGS="$saved_CFLAGS $_define_flag"
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no, fails at run time" >&5
-printf "%s\n" "no, fails at run time" >&6; }
+   eval "$ossh_cache_var='no, fails at run time'"
 			  CFLAGS="$saved_CFLAGS"
 fi
 rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
@@ -7490,16 +7542,26 @@ fi
 
 fi
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+   eval "$ossh_cache_var=no"
 		  CFLAGS="$saved_CFLAGS"
 
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+
+fi
+eval ac_res=\$$ossh_cache_var
+	       { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
+printf "%s\n" "$ac_res" >&6; }
 }
 	{
-	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $CC supports compile flag -Wformat-security" >&5
+  ossh_cache_var=ossh_cv_cflag__Wformat_security
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $CC supports compile flag -Wformat-security" >&5
 printf %s "checking if $CC supports compile flag -Wformat-security... " >&6; }
+if eval test \${$ossh_cache_var+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+
 	saved_CFLAGS="$CFLAGS"
 	CFLAGS="$CFLAGS $WERROR -Wformat-security"
 	_define_flag=""
@@ -7564,14 +7626,12 @@ then :
 
 if $ac_cv_path_EGREP -i "unrecognized option|warning.*ignored" conftest.err >/dev/null
 then
-		{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+		eval "$ossh_cache_var=no"
 		CFLAGS="$saved_CFLAGS"
 else
 				if test "$cross_compiling" = yes
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  CFLAGS="$saved_CFLAGS $_define_flag"
 else $as_nop
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -7631,12 +7691,10 @@ int main(int argc, char **argv) {
 _ACEOF
 if ac_fn_c_try_run "$LINENO"
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  CFLAGS="$saved_CFLAGS $_define_flag"
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no, fails at run time" >&5
-printf "%s\n" "no, fails at run time" >&6; }
+   eval "$ossh_cache_var='no, fails at run time'"
 			  CFLAGS="$saved_CFLAGS"
 fi
 rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
@@ -7645,16 +7703,26 @@ fi
 
 fi
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+   eval "$ossh_cache_var=no"
 		  CFLAGS="$saved_CFLAGS"
 
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+
+fi
+eval ac_res=\$$ossh_cache_var
+	       { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
+printf "%s\n" "$ac_res" >&6; }
 }
 	{
-	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $CC supports compile flag -Wsizeof-pointer-memaccess" >&5
+  ossh_cache_var=ossh_cv_cflag__Wsizeof_pointer_memaccess
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $CC supports compile flag -Wsizeof-pointer-memaccess" >&5
 printf %s "checking if $CC supports compile flag -Wsizeof-pointer-memaccess... " >&6; }
+if eval test \${$ossh_cache_var+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+
 	saved_CFLAGS="$CFLAGS"
 	CFLAGS="$CFLAGS $WERROR -Wsizeof-pointer-memaccess"
 	_define_flag=""
@@ -7719,14 +7787,12 @@ then :
 
 if $ac_cv_path_EGREP -i "unrecognized option|warning.*ignored" conftest.err >/dev/null
 then
-		{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+		eval "$ossh_cache_var=no"
 		CFLAGS="$saved_CFLAGS"
 else
 				if test "$cross_compiling" = yes
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  CFLAGS="$saved_CFLAGS $_define_flag"
 else $as_nop
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -7786,12 +7852,10 @@ int main(int argc, char **argv) {
 _ACEOF
 if ac_fn_c_try_run "$LINENO"
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  CFLAGS="$saved_CFLAGS $_define_flag"
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no, fails at run time" >&5
-printf "%s\n" "no, fails at run time" >&6; }
+   eval "$ossh_cache_var='no, fails at run time'"
 			  CFLAGS="$saved_CFLAGS"
 fi
 rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
@@ -7800,16 +7864,26 @@ fi
 
 fi
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+   eval "$ossh_cache_var=no"
 		  CFLAGS="$saved_CFLAGS"
 
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+
+fi
+eval ac_res=\$$ossh_cache_var
+	       { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
+printf "%s\n" "$ac_res" >&6; }
 }
 	{
-	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $CC supports compile flag -Wpointer-sign" >&5
+  ossh_cache_var=ossh_cv_cflag__Wpointer_sign
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $CC supports compile flag -Wpointer-sign" >&5
 printf %s "checking if $CC supports compile flag -Wpointer-sign... " >&6; }
+if eval test \${$ossh_cache_var+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+
 	saved_CFLAGS="$CFLAGS"
 	CFLAGS="$CFLAGS $WERROR -Wpointer-sign"
 	_define_flag="-Wno-pointer-sign"
@@ -7874,14 +7948,12 @@ then :
 
 if $ac_cv_path_EGREP -i "unrecognized option|warning.*ignored" conftest.err >/dev/null
 then
-		{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+		eval "$ossh_cache_var=no"
 		CFLAGS="$saved_CFLAGS"
 else
 				if test "$cross_compiling" = yes
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  CFLAGS="$saved_CFLAGS $_define_flag"
 else $as_nop
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -7941,12 +8013,10 @@ int main(int argc, char **argv) {
 _ACEOF
 if ac_fn_c_try_run "$LINENO"
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  CFLAGS="$saved_CFLAGS $_define_flag"
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no, fails at run time" >&5
-printf "%s\n" "no, fails at run time" >&6; }
+   eval "$ossh_cache_var='no, fails at run time'"
 			  CFLAGS="$saved_CFLAGS"
 fi
 rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
@@ -7955,16 +8025,26 @@ fi
 
 fi
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+   eval "$ossh_cache_var=no"
 		  CFLAGS="$saved_CFLAGS"
 
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+
+fi
+eval ac_res=\$$ossh_cache_var
+	       { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
+printf "%s\n" "$ac_res" >&6; }
 }
 	{
-	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $CC supports compile flag -Wunused-parameter" >&5
+  ossh_cache_var=ossh_cv_cflag__Wunused_parameter
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $CC supports compile flag -Wunused-parameter" >&5
 printf %s "checking if $CC supports compile flag -Wunused-parameter... " >&6; }
+if eval test \${$ossh_cache_var+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+
 	saved_CFLAGS="$CFLAGS"
 	CFLAGS="$CFLAGS $WERROR -Wunused-parameter"
 	_define_flag="-Wno-unused-parameter"
@@ -8029,14 +8109,12 @@ then :
 
 if $ac_cv_path_EGREP -i "unrecognized option|warning.*ignored" conftest.err >/dev/null
 then
-		{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+		eval "$ossh_cache_var=no"
 		CFLAGS="$saved_CFLAGS"
 else
 				if test "$cross_compiling" = yes
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  CFLAGS="$saved_CFLAGS $_define_flag"
 else $as_nop
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -8096,12 +8174,10 @@ int main(int argc, char **argv) {
 _ACEOF
 if ac_fn_c_try_run "$LINENO"
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  CFLAGS="$saved_CFLAGS $_define_flag"
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no, fails at run time" >&5
-printf "%s\n" "no, fails at run time" >&6; }
+   eval "$ossh_cache_var='no, fails at run time'"
 			  CFLAGS="$saved_CFLAGS"
 fi
 rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
@@ -8110,16 +8186,26 @@ fi
 
 fi
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+   eval "$ossh_cache_var=no"
 		  CFLAGS="$saved_CFLAGS"
 
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+
+fi
+eval ac_res=\$$ossh_cache_var
+	       { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
+printf "%s\n" "$ac_res" >&6; }
 }
 	{
-	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $CC supports compile flag -Wunused-result" >&5
+  ossh_cache_var=ossh_cv_cflag__Wunused_result
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $CC supports compile flag -Wunused-result" >&5
 printf %s "checking if $CC supports compile flag -Wunused-result... " >&6; }
+if eval test \${$ossh_cache_var+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+
 	saved_CFLAGS="$CFLAGS"
 	CFLAGS="$CFLAGS $WERROR -Wunused-result"
 	_define_flag="-Wno-unused-result"
@@ -8184,14 +8270,12 @@ then :
 
 if $ac_cv_path_EGREP -i "unrecognized option|warning.*ignored" conftest.err >/dev/null
 then
-		{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+		eval "$ossh_cache_var=no"
 		CFLAGS="$saved_CFLAGS"
 else
 				if test "$cross_compiling" = yes
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  CFLAGS="$saved_CFLAGS $_define_flag"
 else $as_nop
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -8251,12 +8335,10 @@ int main(int argc, char **argv) {
 _ACEOF
 if ac_fn_c_try_run "$LINENO"
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  CFLAGS="$saved_CFLAGS $_define_flag"
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no, fails at run time" >&5
-printf "%s\n" "no, fails at run time" >&6; }
+   eval "$ossh_cache_var='no, fails at run time'"
 			  CFLAGS="$saved_CFLAGS"
 fi
 rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
@@ -8265,16 +8347,26 @@ fi
 
 fi
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+   eval "$ossh_cache_var=no"
 		  CFLAGS="$saved_CFLAGS"
 
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+
+fi
+eval ac_res=\$$ossh_cache_var
+	       { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
+printf "%s\n" "$ac_res" >&6; }
 }
 	{
-	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $CC supports compile flag -Wimplicit-fallthrough" >&5
+  ossh_cache_var=ossh_cv_cflag__Wimplicit_fallthrough
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $CC supports compile flag -Wimplicit-fallthrough" >&5
 printf %s "checking if $CC supports compile flag -Wimplicit-fallthrough... " >&6; }
+if eval test \${$ossh_cache_var+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+
 	saved_CFLAGS="$CFLAGS"
 	CFLAGS="$CFLAGS $WERROR -Wimplicit-fallthrough"
 	_define_flag=""
@@ -8339,14 +8431,12 @@ then :
 
 if $ac_cv_path_EGREP -i "unrecognized option|warning.*ignored" conftest.err >/dev/null
 then
-		{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+		eval "$ossh_cache_var=no"
 		CFLAGS="$saved_CFLAGS"
 else
 				if test "$cross_compiling" = yes
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  CFLAGS="$saved_CFLAGS $_define_flag"
 else $as_nop
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -8406,12 +8496,10 @@ int main(int argc, char **argv) {
 _ACEOF
 if ac_fn_c_try_run "$LINENO"
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  CFLAGS="$saved_CFLAGS $_define_flag"
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no, fails at run time" >&5
-printf "%s\n" "no, fails at run time" >&6; }
+   eval "$ossh_cache_var='no, fails at run time'"
 			  CFLAGS="$saved_CFLAGS"
 fi
 rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
@@ -8420,16 +8508,26 @@ fi
 
 fi
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+   eval "$ossh_cache_var=no"
 		  CFLAGS="$saved_CFLAGS"
 
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+
+fi
+eval ac_res=\$$ossh_cache_var
+	       { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
+printf "%s\n" "$ac_res" >&6; }
 }
 	{
-	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $CC supports compile flag -Wmisleading-indentation" >&5
+  ossh_cache_var=ossh_cv_cflag__Wmisleading_indentation
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $CC supports compile flag -Wmisleading-indentation" >&5
 printf %s "checking if $CC supports compile flag -Wmisleading-indentation... " >&6; }
+if eval test \${$ossh_cache_var+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+
 	saved_CFLAGS="$CFLAGS"
 	CFLAGS="$CFLAGS $WERROR -Wmisleading-indentation"
 	_define_flag=""
@@ -8494,14 +8592,12 @@ then :
 
 if $ac_cv_path_EGREP -i "unrecognized option|warning.*ignored" conftest.err >/dev/null
 then
-		{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+		eval "$ossh_cache_var=no"
 		CFLAGS="$saved_CFLAGS"
 else
 				if test "$cross_compiling" = yes
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  CFLAGS="$saved_CFLAGS $_define_flag"
 else $as_nop
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -8561,12 +8657,10 @@ int main(int argc, char **argv) {
 _ACEOF
 if ac_fn_c_try_run "$LINENO"
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  CFLAGS="$saved_CFLAGS $_define_flag"
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no, fails at run time" >&5
-printf "%s\n" "no, fails at run time" >&6; }
+   eval "$ossh_cache_var='no, fails at run time'"
 			  CFLAGS="$saved_CFLAGS"
 fi
 rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
@@ -8575,16 +8669,26 @@ fi
 
 fi
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+   eval "$ossh_cache_var=no"
 		  CFLAGS="$saved_CFLAGS"
 
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+
+fi
+eval ac_res=\$$ossh_cache_var
+	       { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
+printf "%s\n" "$ac_res" >&6; }
 }
 	{
-	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $CC supports compile flag -Wbitwise-instead-of-logical" >&5
+  ossh_cache_var=ossh_cv_cflag__Wbitwise_instead_of_logical
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $CC supports compile flag -Wbitwise-instead-of-logical" >&5
 printf %s "checking if $CC supports compile flag -Wbitwise-instead-of-logical... " >&6; }
+if eval test \${$ossh_cache_var+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+
 	saved_CFLAGS="$CFLAGS"
 	CFLAGS="$CFLAGS $WERROR -Wbitwise-instead-of-logical"
 	_define_flag=""
@@ -8649,14 +8753,12 @@ then :
 
 if $ac_cv_path_EGREP -i "unrecognized option|warning.*ignored" conftest.err >/dev/null
 then
-		{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+		eval "$ossh_cache_var=no"
 		CFLAGS="$saved_CFLAGS"
 else
 				if test "$cross_compiling" = yes
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  CFLAGS="$saved_CFLAGS $_define_flag"
 else $as_nop
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -8716,12 +8818,10 @@ int main(int argc, char **argv) {
 _ACEOF
 if ac_fn_c_try_run "$LINENO"
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  CFLAGS="$saved_CFLAGS $_define_flag"
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no, fails at run time" >&5
-printf "%s\n" "no, fails at run time" >&6; }
+   eval "$ossh_cache_var='no, fails at run time'"
 			  CFLAGS="$saved_CFLAGS"
 fi
 rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
@@ -8730,16 +8830,26 @@ fi
 
 fi
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+   eval "$ossh_cache_var=no"
 		  CFLAGS="$saved_CFLAGS"
 
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+
+fi
+eval ac_res=\$$ossh_cache_var
+	       { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
+printf "%s\n" "$ac_res" >&6; }
 }
 	{
-	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $CC supports compile flag -fno-strict-aliasing" >&5
+  ossh_cache_var=ossh_cv_cflag__fno_strict_aliasing
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $CC supports compile flag -fno-strict-aliasing" >&5
 printf %s "checking if $CC supports compile flag -fno-strict-aliasing... " >&6; }
+if eval test \${$ossh_cache_var+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+
 	saved_CFLAGS="$CFLAGS"
 	CFLAGS="$CFLAGS $WERROR -fno-strict-aliasing"
 	_define_flag=""
@@ -8804,14 +8914,12 @@ then :
 
 if $ac_cv_path_EGREP -i "unrecognized option|warning.*ignored" conftest.err >/dev/null
 then
-		{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+		eval "$ossh_cache_var=no"
 		CFLAGS="$saved_CFLAGS"
 else
 				if test "$cross_compiling" = yes
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  CFLAGS="$saved_CFLAGS $_define_flag"
 else $as_nop
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -8871,12 +8979,10 @@ int main(int argc, char **argv) {
 _ACEOF
 if ac_fn_c_try_run "$LINENO"
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  CFLAGS="$saved_CFLAGS $_define_flag"
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no, fails at run time" >&5
-printf "%s\n" "no, fails at run time" >&6; }
+   eval "$ossh_cache_var='no, fails at run time'"
 			  CFLAGS="$saved_CFLAGS"
 fi
 rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
@@ -8885,17 +8991,27 @@ fi
 
 fi
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+   eval "$ossh_cache_var=no"
 		  CFLAGS="$saved_CFLAGS"
 
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+
+fi
+eval ac_res=\$$ossh_cache_var
+	       { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
+printf "%s\n" "$ac_res" >&6; }
 }
     if test "x$use_toolchain_hardening" = "x1"; then
 	{
-	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $CC supports compile flag -D_FORTIFY_SOURCE=2" >&5
+  ossh_cache_var=ossh_cv_cflag__D_FORTIFY_SOURCE_2
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $CC supports compile flag -D_FORTIFY_SOURCE=2" >&5
 printf %s "checking if $CC supports compile flag -D_FORTIFY_SOURCE=2... " >&6; }
+if eval test \${$ossh_cache_var+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+
 	saved_CFLAGS="$CFLAGS"
 	CFLAGS="$CFLAGS $WERROR -D_FORTIFY_SOURCE=2"
 	_define_flag=""
@@ -8960,14 +9076,12 @@ then :
 
 if $ac_cv_path_EGREP -i "unrecognized option|warning.*ignored" conftest.err >/dev/null
 then
-		{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+		eval "$ossh_cache_var=no"
 		CFLAGS="$saved_CFLAGS"
 else
 				if test "$cross_compiling" = yes
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  CFLAGS="$saved_CFLAGS $_define_flag"
 else $as_nop
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -9027,12 +9141,10 @@ int main(int argc, char **argv) {
 _ACEOF
 if ac_fn_c_try_run "$LINENO"
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  CFLAGS="$saved_CFLAGS $_define_flag"
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no, fails at run time" >&5
-printf "%s\n" "no, fails at run time" >&6; }
+   eval "$ossh_cache_var='no, fails at run time'"
 			  CFLAGS="$saved_CFLAGS"
 fi
 rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
@@ -9041,16 +9153,26 @@ fi
 
 fi
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+   eval "$ossh_cache_var=no"
 		  CFLAGS="$saved_CFLAGS"
 
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+
+fi
+eval ac_res=\$$ossh_cache_var
+	       { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
+printf "%s\n" "$ac_res" >&6; }
 }
 	{
-	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $LD supports link flag -Wl,-z,relro" >&5
+  ossh_cache_var=ossh_cv_ldflag__Wl__z_relro
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $LD supports link flag -Wl,-z,relro" >&5
 printf %s "checking if $LD supports link flag -Wl,-z,relro... " >&6; }
+if eval test \${$ossh_cache_var+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+
 	saved_LDFLAGS="$LDFLAGS"
 	LDFLAGS="$LDFLAGS $WERROR -Wl,-z,relro"
 	_define_flag=""
@@ -9115,14 +9237,12 @@ then :
 
 if $ac_cv_path_EGREP -i "unrecognized option|warning.*ignored" conftest.err >/dev/null
 then
-		  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+		  eval "$ossh_cache_var=no"
 		  LDFLAGS="$saved_LDFLAGS"
 else
 		  		  if test "$cross_compiling" = yes
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  LDFLAGS="$saved_LDFLAGS $_define_flag"
 
 else $as_nop
@@ -9183,12 +9303,10 @@ int main(int argc, char **argv) {
 _ACEOF
 if ac_fn_c_try_run "$LINENO"
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  LDFLAGS="$saved_LDFLAGS $_define_flag"
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no, fails at run time" >&5
-printf "%s\n" "no, fails at run time" >&6; }
+   eval "$ossh_cache_var='no, fails at run time'"
 			  LDFLAGS="$saved_LDFLAGS"
 fi
 rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
@@ -9197,17 +9315,27 @@ fi
 
 fi
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+   eval "$ossh_cache_var=no"
 		  LDFLAGS="$saved_LDFLAGS"
 
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam \
     conftest$ac_exeext conftest.$ac_ext
+
+fi
+eval ac_res=\$$ossh_cache_var
+	       { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
+printf "%s\n" "$ac_res" >&6; }
 }
 	{
-	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $LD supports link flag -Wl,-z,now" >&5
+  ossh_cache_var=ossh_cv_ldflag__Wl__z_now
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $LD supports link flag -Wl,-z,now" >&5
 printf %s "checking if $LD supports link flag -Wl,-z,now... " >&6; }
+if eval test \${$ossh_cache_var+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+
 	saved_LDFLAGS="$LDFLAGS"
 	LDFLAGS="$LDFLAGS $WERROR -Wl,-z,now"
 	_define_flag=""
@@ -9272,14 +9400,12 @@ then :
 
 if $ac_cv_path_EGREP -i "unrecognized option|warning.*ignored" conftest.err >/dev/null
 then
-		  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+		  eval "$ossh_cache_var=no"
 		  LDFLAGS="$saved_LDFLAGS"
 else
 		  		  if test "$cross_compiling" = yes
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  LDFLAGS="$saved_LDFLAGS $_define_flag"
 
 else $as_nop
@@ -9340,12 +9466,10 @@ int main(int argc, char **argv) {
 _ACEOF
 if ac_fn_c_try_run "$LINENO"
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  LDFLAGS="$saved_LDFLAGS $_define_flag"
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no, fails at run time" >&5
-printf "%s\n" "no, fails at run time" >&6; }
+   eval "$ossh_cache_var='no, fails at run time'"
 			  LDFLAGS="$saved_LDFLAGS"
 fi
 rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
@@ -9354,17 +9478,27 @@ fi
 
 fi
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+   eval "$ossh_cache_var=no"
 		  LDFLAGS="$saved_LDFLAGS"
 
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam \
     conftest$ac_exeext conftest.$ac_ext
+
+fi
+eval ac_res=\$$ossh_cache_var
+	       { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
+printf "%s\n" "$ac_res" >&6; }
 }
 	{
-	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $LD supports link flag -Wl,-z,noexecstack" >&5
+  ossh_cache_var=ossh_cv_ldflag__Wl__z_noexecstack
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $LD supports link flag -Wl,-z,noexecstack" >&5
 printf %s "checking if $LD supports link flag -Wl,-z,noexecstack... " >&6; }
+if eval test \${$ossh_cache_var+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+
 	saved_LDFLAGS="$LDFLAGS"
 	LDFLAGS="$LDFLAGS $WERROR -Wl,-z,noexecstack"
 	_define_flag=""
@@ -9429,14 +9563,12 @@ then :
 
 if $ac_cv_path_EGREP -i "unrecognized option|warning.*ignored" conftest.err >/dev/null
 then
-		  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+		  eval "$ossh_cache_var=no"
 		  LDFLAGS="$saved_LDFLAGS"
 else
 		  		  if test "$cross_compiling" = yes
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  LDFLAGS="$saved_LDFLAGS $_define_flag"
 
 else $as_nop
@@ -9497,12 +9629,10 @@ int main(int argc, char **argv) {
 _ACEOF
 if ac_fn_c_try_run "$LINENO"
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  LDFLAGS="$saved_LDFLAGS $_define_flag"
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no, fails at run time" >&5
-printf "%s\n" "no, fails at run time" >&6; }
+   eval "$ossh_cache_var='no, fails at run time'"
 			  LDFLAGS="$saved_LDFLAGS"
 fi
 rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
@@ -9511,13 +9641,17 @@ fi
 
 fi
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+   eval "$ossh_cache_var=no"
 		  LDFLAGS="$saved_LDFLAGS"
 
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam \
     conftest$ac_exeext conftest.$ac_ext
+
+fi
+eval ac_res=\$$ossh_cache_var
+	       { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
+printf "%s\n" "$ac_res" >&6; }
 }
 	# NB. -ftrapv expects certain support functions to be present in
 	# the compiler library (libgcc or similar) to detect integer operations
@@ -9525,8 +9659,14 @@ rm -f core conftest.err conftest.$ac_objext conftest.beam \
 	# actually links. The test program compiled/linked includes a number
 	# of integer operations that should exercise this.
 	{
-	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $CC supports compile flag -ftrapv and linking succeeds" >&5
+  ossh_cache_var=ossh_cv_cflag__ftrapv
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $CC supports compile flag -ftrapv and linking succeeds" >&5
 printf %s "checking if $CC supports compile flag -ftrapv and linking succeeds... " >&6; }
+if eval test \${$ossh_cache_var+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+
 	saved_CFLAGS="$CFLAGS"
 	CFLAGS="$CFLAGS $WERROR -ftrapv"
 	_define_flag=""
@@ -9591,14 +9731,12 @@ then :
 
 if $ac_cv_path_EGREP -i "unrecognized option|warning.*ignored" conftest.err >/dev/null
 then
-		{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+		eval "$ossh_cache_var=no"
 		CFLAGS="$saved_CFLAGS"
 else
 				if test "$cross_compiling" = yes
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  CFLAGS="$saved_CFLAGS $_define_flag"
 else $as_nop
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -9658,12 +9796,10 @@ int main(int argc, char **argv) {
 _ACEOF
 if ac_fn_c_try_run "$LINENO"
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  CFLAGS="$saved_CFLAGS $_define_flag"
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no, fails at run time" >&5
-printf "%s\n" "no, fails at run time" >&6; }
+   eval "$ossh_cache_var='no, fails at run time'"
 			  CFLAGS="$saved_CFLAGS"
 fi
 rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
@@ -9672,13 +9808,17 @@ fi
 
 fi
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+   eval "$ossh_cache_var=no"
 		  CFLAGS="$saved_CFLAGS"
 
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam \
     conftest$ac_exeext conftest.$ac_ext
+
+fi
+eval ac_res=\$$ossh_cache_var
+	       { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
+printf "%s\n" "$ac_res" >&6; }
 }
 	# clang 15 seems to have a bug in -fzero-call-used-regs=all.  See
 	# https://bugzilla.mindrot.org/show_bug.cgi?id=3475 and
@@ -9687,8 +9827,14 @@ rm -f core conftest.err conftest.$ac_objext conftest.beam \
 	# flag at all (https://bugzilla.mindrot.org/show_bug.cgi?id=3629)
 	case "$CLANG_VER" in
 	apple-15*) {
-	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $CC supports compile flag -fzero-call-used-regs=used and linking succeeds" >&5
+  ossh_cache_var=ossh_cv_cflag__fzero_call_used_regs_used
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $CC supports compile flag -fzero-call-used-regs=used and linking succeeds" >&5
 printf %s "checking if $CC supports compile flag -fzero-call-used-regs=used and linking succeeds... " >&6; }
+if eval test \${$ossh_cache_var+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+
 	saved_CFLAGS="$CFLAGS"
 	CFLAGS="$CFLAGS $WERROR -fzero-call-used-regs=used"
 	_define_flag=""
@@ -9753,14 +9899,12 @@ then :
 
 if $ac_cv_path_EGREP -i "unrecognized option|warning.*ignored" conftest.err >/dev/null
 then
-		{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+		eval "$ossh_cache_var=no"
 		CFLAGS="$saved_CFLAGS"
 else
 				if test "$cross_compiling" = yes
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  CFLAGS="$saved_CFLAGS $_define_flag"
 else $as_nop
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -9820,12 +9964,10 @@ int main(int argc, char **argv) {
 _ACEOF
 if ac_fn_c_try_run "$LINENO"
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  CFLAGS="$saved_CFLAGS $_define_flag"
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no, fails at run time" >&5
-printf "%s\n" "no, fails at run time" >&6; }
+   eval "$ossh_cache_var='no, fails at run time'"
 			  CFLAGS="$saved_CFLAGS"
 fi
 rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
@@ -9834,18 +9976,28 @@ fi
 
 fi
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+   eval "$ossh_cache_var=no"
 		  CFLAGS="$saved_CFLAGS"
 
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam \
     conftest$ac_exeext conftest.$ac_ext
+
+fi
+eval ac_res=\$$ossh_cache_var
+	       { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
+printf "%s\n" "$ac_res" >&6; }
 } ;;
 	17*)	;;
 	*)	{
-	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $CC supports compile flag -fzero-call-used-regs=used and linking succeeds" >&5
+  ossh_cache_var=ossh_cv_cflag__fzero_call_used_regs_used
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $CC supports compile flag -fzero-call-used-regs=used and linking succeeds" >&5
 printf %s "checking if $CC supports compile flag -fzero-call-used-regs=used and linking succeeds... " >&6; }
+if eval test \${$ossh_cache_var+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+
 	saved_CFLAGS="$CFLAGS"
 	CFLAGS="$CFLAGS $WERROR -fzero-call-used-regs=used"
 	_define_flag=""
@@ -9910,14 +10062,12 @@ then :
 
 if $ac_cv_path_EGREP -i "unrecognized option|warning.*ignored" conftest.err >/dev/null
 then
-		{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+		eval "$ossh_cache_var=no"
 		CFLAGS="$saved_CFLAGS"
 else
 				if test "$cross_compiling" = yes
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  CFLAGS="$saved_CFLAGS $_define_flag"
 else $as_nop
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -9977,12 +10127,10 @@ int main(int argc, char **argv) {
 _ACEOF
 if ac_fn_c_try_run "$LINENO"
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  CFLAGS="$saved_CFLAGS $_define_flag"
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no, fails at run time" >&5
-printf "%s\n" "no, fails at run time" >&6; }
+   eval "$ossh_cache_var='no, fails at run time'"
 			  CFLAGS="$saved_CFLAGS"
 fi
 rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
@@ -9991,18 +10139,28 @@ fi
 
 fi
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+   eval "$ossh_cache_var=no"
 		  CFLAGS="$saved_CFLAGS"
 
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam \
     conftest$ac_exeext conftest.$ac_ext
+
+fi
+eval ac_res=\$$ossh_cache_var
+	       { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
+printf "%s\n" "$ac_res" >&6; }
 } ;;
 	esac
 	{
-	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $CC supports compile flag -ftrivial-auto-var-init=zero" >&5
+  ossh_cache_var=ossh_cv_cflag__ftrivial_auto_var_init_zero
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $CC supports compile flag -ftrivial-auto-var-init=zero" >&5
 printf %s "checking if $CC supports compile flag -ftrivial-auto-var-init=zero... " >&6; }
+if eval test \${$ossh_cache_var+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+
 	saved_CFLAGS="$CFLAGS"
 	CFLAGS="$CFLAGS $WERROR -ftrivial-auto-var-init=zero"
 	_define_flag=""
@@ -10067,14 +10225,12 @@ then :
 
 if $ac_cv_path_EGREP -i "unrecognized option|warning.*ignored" conftest.err >/dev/null
 then
-		{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+		eval "$ossh_cache_var=no"
 		CFLAGS="$saved_CFLAGS"
 else
 				if test "$cross_compiling" = yes
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  CFLAGS="$saved_CFLAGS $_define_flag"
 else $as_nop
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -10134,12 +10290,10 @@ int main(int argc, char **argv) {
 _ACEOF
 if ac_fn_c_try_run "$LINENO"
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  CFLAGS="$saved_CFLAGS $_define_flag"
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no, fails at run time" >&5
-printf "%s\n" "no, fails at run time" >&6; }
+   eval "$ossh_cache_var='no, fails at run time'"
 			  CFLAGS="$saved_CFLAGS"
 fi
 rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
@@ -10148,18 +10302,28 @@ fi
 
 fi
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+   eval "$ossh_cache_var=no"
 		  CFLAGS="$saved_CFLAGS"
 
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+
+fi
+eval ac_res=\$$ossh_cache_var
+	       { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
+printf "%s\n" "$ac_res" >&6; }
 }
     fi
     if test "x$use_retpoline" = "x1"; then
 	{
-	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $CC supports compile flag -mretpoline" >&5
+  ossh_cache_var=ossh_cv_cflag__mretpoline
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $CC supports compile flag -mretpoline" >&5
 printf %s "checking if $CC supports compile flag -mretpoline... " >&6; }
+if eval test \${$ossh_cache_var+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+
 	saved_CFLAGS="$CFLAGS"
 	CFLAGS="$CFLAGS $WERROR -mretpoline"
 	_define_flag=""
@@ -10224,14 +10388,12 @@ then :
 
 if $ac_cv_path_EGREP -i "unrecognized option|warning.*ignored" conftest.err >/dev/null
 then
-		{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+		eval "$ossh_cache_var=no"
 		CFLAGS="$saved_CFLAGS"
 else
 				if test "$cross_compiling" = yes
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  CFLAGS="$saved_CFLAGS $_define_flag"
 else $as_nop
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -10291,12 +10453,10 @@ int main(int argc, char **argv) {
 _ACEOF
 if ac_fn_c_try_run "$LINENO"
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  CFLAGS="$saved_CFLAGS $_define_flag"
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no, fails at run time" >&5
-printf "%s\n" "no, fails at run time" >&6; }
+   eval "$ossh_cache_var='no, fails at run time'"
 			  CFLAGS="$saved_CFLAGS"
 fi
 rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
@@ -10305,16 +10465,26 @@ fi
 
 fi
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+   eval "$ossh_cache_var=no"
 		  CFLAGS="$saved_CFLAGS"
 
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+
+fi
+eval ac_res=\$$ossh_cache_var
+	       { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
+printf "%s\n" "$ac_res" >&6; }
 } # clang
 	{
-	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $LD supports link flag -Wl,-z,retpolineplt" >&5
+  ossh_cache_var=ossh_cv_ldflag__Wl__z_retpolineplt
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $LD supports link flag -Wl,-z,retpolineplt" >&5
 printf %s "checking if $LD supports link flag -Wl,-z,retpolineplt... " >&6; }
+if eval test \${$ossh_cache_var+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+
 	saved_LDFLAGS="$LDFLAGS"
 	LDFLAGS="$LDFLAGS $WERROR -Wl,-z,retpolineplt"
 	_define_flag=""
@@ -10379,14 +10549,12 @@ then :
 
 if $ac_cv_path_EGREP -i "unrecognized option|warning.*ignored" conftest.err >/dev/null
 then
-		  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+		  eval "$ossh_cache_var=no"
 		  LDFLAGS="$saved_LDFLAGS"
 else
 		  		  if test "$cross_compiling" = yes
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  LDFLAGS="$saved_LDFLAGS $_define_flag"
 
 else $as_nop
@@ -10447,12 +10615,10 @@ int main(int argc, char **argv) {
 _ACEOF
 if ac_fn_c_try_run "$LINENO"
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  LDFLAGS="$saved_LDFLAGS $_define_flag"
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no, fails at run time" >&5
-printf "%s\n" "no, fails at run time" >&6; }
+   eval "$ossh_cache_var='no, fails at run time'"
 			  LDFLAGS="$saved_LDFLAGS"
 fi
 rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
@@ -10461,13 +10627,17 @@ fi
 
 fi
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+   eval "$ossh_cache_var=no"
 		  LDFLAGS="$saved_LDFLAGS"
 
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam \
     conftest$ac_exeext conftest.$ac_ext
+
+fi
+eval ac_res=\$$ossh_cache_var
+	       { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
+printf "%s\n" "$ac_res" >&6; }
 }
     fi
 
@@ -10875,12 +11045,6 @@ then :
   printf "%s\n" "#define HAVE_DIRENT_H 1" >>confdefs.h
 
 fi
-ac_fn_c_check_header_compile "$LINENO" "endian.h" "ac_cv_header_endian_h" "$ac_includes_default"
-if test "x$ac_cv_header_endian_h" = xyes
-then :
-  printf "%s\n" "#define HAVE_ENDIAN_H 1" >>confdefs.h
-
-fi
 ac_fn_c_check_header_compile "$LINENO" "elf.h" "ac_cv_header_elf_h" "$ac_includes_default"
 if test "x$ac_cv_header_elf_h" = xyes
 then :
@@ -10941,12 +11105,6 @@ then :
   printf "%s\n" "#define HAVE_IAF_H 1" >>confdefs.h
 
 fi
-ac_fn_c_check_header_compile "$LINENO" "ifaddrs.h" "ac_cv_header_ifaddrs_h" "$ac_includes_default"
-if test "x$ac_cv_header_ifaddrs_h" = xyes
-then :
-  printf "%s\n" "#define HAVE_IFADDRS_H 1" >>confdefs.h
-
-fi
 ac_fn_c_check_header_compile "$LINENO" "inttypes.h" "ac_cv_header_inttypes_h" "$ac_includes_default"
 if test "x$ac_cv_header_inttypes_h" = xyes
 then :
@@ -11001,28 +11159,10 @@ then :
   printf "%s\n" "#define HAVE_NETDB_H 1" >>confdefs.h
 
 fi
-ac_fn_c_check_header_compile "$LINENO" "netgroup.h" "ac_cv_header_netgroup_h" "$ac_includes_default"
-if test "x$ac_cv_header_netgroup_h" = xyes
-then :
-  printf "%s\n" "#define HAVE_NETGROUP_H 1" >>confdefs.h
-
-fi
 ac_fn_c_check_header_compile "$LINENO" "pam/pam_appl.h" "ac_cv_header_pam_pam_appl_h" "$ac_includes_default"
 if test "x$ac_cv_header_pam_pam_appl_h" = xyes
 then :
   printf "%s\n" "#define HAVE_PAM_PAM_APPL_H 1" >>confdefs.h
-
-fi
-ac_fn_c_check_header_compile "$LINENO" "paths.h" "ac_cv_header_paths_h" "$ac_includes_default"
-if test "x$ac_cv_header_paths_h" = xyes
-then :
-  printf "%s\n" "#define HAVE_PATHS_H 1" >>confdefs.h
-
-fi
-ac_fn_c_check_header_compile "$LINENO" "poll.h" "ac_cv_header_poll_h" "$ac_includes_default"
-if test "x$ac_cv_header_poll_h" = xyes
-then :
-  printf "%s\n" "#define HAVE_POLL_H 1" >>confdefs.h
 
 fi
 ac_fn_c_check_header_compile "$LINENO" "pty.h" "ac_cv_header_pty_h" "$ac_includes_default"
@@ -11065,12 +11205,6 @@ ac_fn_c_check_header_compile "$LINENO" "stddef.h" "ac_cv_header_stddef_h" "$ac_i
 if test "x$ac_cv_header_stddef_h" = xyes
 then :
   printf "%s\n" "#define HAVE_STDDEF_H 1" >>confdefs.h
-
-fi
-ac_fn_c_check_header_compile "$LINENO" "stdint.h" "ac_cv_header_stdint_h" "$ac_includes_default"
-if test "x$ac_cv_header_stdint_h" = xyes
-then :
-  printf "%s\n" "#define HAVE_STDINT_H 1" >>confdefs.h
 
 fi
 ac_fn_c_check_header_compile "$LINENO" "string.h" "ac_cv_header_string_h" "$ac_includes_default"
@@ -11217,12 +11351,6 @@ then :
   printf "%s\n" "#define HAVE_SYS_SYSMACROS_H 1" >>confdefs.h
 
 fi
-ac_fn_c_check_header_compile "$LINENO" "sys/time.h" "ac_cv_header_sys_time_h" "$ac_includes_default"
-if test "x$ac_cv_header_sys_time_h" = xyes
-then :
-  printf "%s\n" "#define HAVE_SYS_TIME_H 1" >>confdefs.h
-
-fi
 ac_fn_c_check_header_compile "$LINENO" "sys/timers.h" "ac_cv_header_sys_timers_h" "$ac_includes_default"
 if test "x$ac_cv_header_sys_timers_h" = xyes
 then :
@@ -11233,12 +11361,6 @@ ac_fn_c_check_header_compile "$LINENO" "sys/vfs.h" "ac_cv_header_sys_vfs_h" "$ac
 if test "x$ac_cv_header_sys_vfs_h" = xyes
 then :
   printf "%s\n" "#define HAVE_SYS_VFS_H 1" >>confdefs.h
-
-fi
-ac_fn_c_check_header_compile "$LINENO" "time.h" "ac_cv_header_time_h" "$ac_includes_default"
-if test "x$ac_cv_header_time_h" = xyes
-then :
-  printf "%s\n" "#define HAVE_TIME_H 1" >>confdefs.h
 
 fi
 ac_fn_c_check_header_compile "$LINENO" "tmpdir.h" "ac_cv_header_tmpdir_h" "$ac_includes_default"
@@ -11271,12 +11393,6 @@ then :
   printf "%s\n" "#define HAVE_USERSEC_H 1" >>confdefs.h
 
 fi
-ac_fn_c_check_header_compile "$LINENO" "util.h" "ac_cv_header_util_h" "$ac_includes_default"
-if test "x$ac_cv_header_util_h" = xyes
-then :
-  printf "%s\n" "#define HAVE_UTIL_H 1" >>confdefs.h
-
-fi
 ac_fn_c_check_header_compile "$LINENO" "utime.h" "ac_cv_header_utime_h" "$ac_includes_default"
 if test "x$ac_cv_header_utime_h" = xyes
 then :
@@ -11307,6 +11423,39 @@ then :
   printf "%s\n" "#define HAVE_WCHAR_H 1" >>confdefs.h
 
 fi
+
+
+# Create replacement header files for common headers that are missing on this
+# platform.  Usually these are just empty, but in some cases they'll include
+# the equivalent file.  This avoids having to wrap those includes in
+# '#ifdef HAVE_FOO_H'.  If we create any such headers, add the path to includes.
+COMPATINCLUDES=""
+       for ac_header in endian.h ifaddrs.h libgen.h paths.h netgroup.h nlist.h poll.h stdint.h sys/stat.h sys/time.h sys/un.h time.h util.h
+do :
+  as_ac_Header=`printf "%s\n" "ac_cv_header_$ac_header" | $as_tr_sh`
+ac_fn_c_check_header_compile "$LINENO" "$ac_header" "$as_ac_Header" "$ac_includes_default"
+if eval test \"x\$"$as_ac_Header"\" = x"yes"
+then :
+  cat >>confdefs.h <<_ACEOF
+#define `printf "%s\n" "HAVE_$ac_header" | $as_tr_cpp` 1
+_ACEOF
+
+else $as_nop
+
+	COMPATINCLUDES="openbsd-compat/include"
+	header="$COMPATINCLUDES/$ac_header"
+	dir=`dirname "$header"`
+	mkdir -p "$dir"
+	case "$ac_header" in
+	poll.h) echo '#ifdef HAVE_SYS_POLL_H'
+	        echo '#include <sys/poll.h>'
+	        echo '#endif' ;;
+	*)      ;;
+	esac >"$header"
+
+fi
+
+done
 
 
 ac_fn_check_decl "$LINENO" "le32toh" "ac_cv_have_decl_le32toh" "
@@ -11551,6 +11700,9 @@ SOLARIS_PRIVS="no"
 
 # Default shared library extension
 SHLIBEXT=".so"
+
+# See OpenBSD section in $host case below.
+need_pledge_inet=""
 
 # Check for some target-specific stuff
 case "$host" in
@@ -11867,8 +12019,14 @@ printf "%s\n" "#define FILESYSTEM_NO_BACKSLASH 1" >>confdefs.h
 	# Cygwin defines optargs, optargs as declspec(dllimport) for historical
 	# reasons which cause compile warnings, so we disable those warnings.
 	{
-	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $CC supports compile flag -Wno-attributes" >&5
+  ossh_cache_var=ossh_cv_cflag__Wno_attributes
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $CC supports compile flag -Wno-attributes" >&5
 printf %s "checking if $CC supports compile flag -Wno-attributes... " >&6; }
+if eval test \${$ossh_cache_var+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+
 	saved_CFLAGS="$CFLAGS"
 	CFLAGS="$CFLAGS $WERROR -Wno-attributes"
 	_define_flag=""
@@ -11933,14 +12091,12 @@ then :
 
 if $ac_cv_path_EGREP -i "unrecognized option|warning.*ignored" conftest.err >/dev/null
 then
-		{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+		eval "$ossh_cache_var=no"
 		CFLAGS="$saved_CFLAGS"
 else
 				if test "$cross_compiling" = yes
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  CFLAGS="$saved_CFLAGS $_define_flag"
 else $as_nop
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -12000,12 +12156,10 @@ int main(int argc, char **argv) {
 _ACEOF
 if ac_fn_c_try_run "$LINENO"
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  CFLAGS="$saved_CFLAGS $_define_flag"
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no, fails at run time" >&5
-printf "%s\n" "no, fails at run time" >&6; }
+   eval "$ossh_cache_var='no, fails at run time'"
 			  CFLAGS="$saved_CFLAGS"
 fi
 rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
@@ -12014,12 +12168,16 @@ fi
 
 fi
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+   eval "$ossh_cache_var=no"
 		  CFLAGS="$saved_CFLAGS"
 
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+
+fi
+eval ac_res=\$$ossh_cache_var
+	       { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
+printf "%s\n" "$ac_res" >&6; }
 }
 	SHLIBEXT=".dll"
 	;;
@@ -12734,6 +12892,9 @@ printf "%s\n" "#define LOCKED_PASSWD_PREFIX \"*LOCKED*\"" >>confdefs.h
 
 printf "%s\n" "#define SSH_TUN_FREEBSD 1" >>confdefs.h
 
+
+printf "%s\n" "#define SSH_TUN_COMPAT_AF 1" >>confdefs.h
+
 	ac_fn_c_check_header_compile "$LINENO" "net/if_tap.h" "ac_cv_header_net_if_tap_h" "$ac_includes_default"
 if test "x$ac_cv_header_net_if_tap_h" = xyes
 then :
@@ -12796,6 +12957,53 @@ printf "%s\n" "#define SSH_TUN_OPENBSD 1" >>confdefs.h
 printf "%s\n" "#define SYSLOG_R_SAFE_IN_SIGHAND 1" >>confdefs.h
 
 	TEST_MALLOC_OPTIONS="SJRU"
+	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether pledge(2) allows IP_TOS" >&5
+printf %s "checking whether pledge(2) allows IP_TOS... " >&6; }
+	if test "$cross_compiling" = yes
+then :
+   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: cross compiling: cannot test" >&5
+printf "%s\n" "$as_me: WARNING: cross compiling: cannot test" >&2;}
+else $as_nop
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <err.h>
+
+int
+main (void)
+{
+
+int s, one = 1;
+if ((s = socket(AF_INET, SOCK_STREAM, 0)) == -1)
+	err(1, "socket");
+if (pledge("stdio", NULL) == -1)
+	err(1, "pledge");
+if (setsockopt(s, IPPROTO_IP, IP_TOS, &one, sizeof(one)) == -1)
+	err(1, "setsockopt");
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"
+then :
+   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+printf "%s\n" "yes" >&6; }
+else $as_nop
+
+		{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+		need_pledge_inet=1
+
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
 	;;
 *-*-solaris*)
 	if test "x$withval" != "xno" ; then
@@ -13446,6 +13654,15 @@ rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
 fi
 
 
+if test -z "$need_pledge_inet" ; then
+	printf "%s\n" "#define PLEDGE_EXTRA_INET /**/" >>confdefs.h
+
+else
+
+printf "%s\n" "#define PLEDGE_EXTRA_INET \"inet \"" >>confdefs.h
+
+fi
+
 # Checks for libraries.
 ac_fn_c_check_func "$LINENO" "setsockopt" "ac_cv_func_setsockopt"
 if test "x$ac_cv_func_setsockopt" = xyes
@@ -13727,6 +13944,55 @@ then :
 printf "%s\n" "#define HAVE_BASENAME 1" >>confdefs.h
 
 fi
+
+
+ac_fn_c_check_func "$LINENO" "sqrt" "ac_cv_func_sqrt"
+if test "x$ac_cv_func_sqrt" = xyes
+then :
+
+else $as_nop
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for sqrt in -lm" >&5
+printf %s "checking for sqrt in -lm... " >&6; }
+if test ${ac_cv_lib_m_sqrt+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lm  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+char sqrt ();
+int
+main (void)
+{
+return sqrt ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"
+then :
+  ac_cv_lib_m_sqrt=yes
+else $as_nop
+  ac_cv_lib_m_sqrt=no
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_m_sqrt" >&5
+printf "%s\n" "$ac_cv_lib_m_sqrt" >&6; }
+if test "x$ac_cv_lib_m_sqrt" = xyes
+then :
+  TESTLIBS="$TESTLIBS -lm"
+fi
+
+fi
+
 
 
 zlib=yes
@@ -15110,6 +15376,21 @@ rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
 fi
 
 
+ac_fn_c_check_member "$LINENO" "struct dirent" "d_type" "ac_cv_member_struct_dirent_d_type" "
+#ifdef HAVE_DIRENT_H
+#include <dirent.h>
+#endif
+
+"
+if test "x$ac_cv_member_struct_dirent_d_type" = xyes
+then :
+
+printf "%s\n" "#define HAVE_STRUCT_DIRENT_D_TYPE 1" >>confdefs.h
+
+
+fi
+
+
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for /proc/pid/fd directory" >&5
 printf %s "checking for /proc/pid/fd directory... " >&6; }
 if test -d "/proc/$$/fd" ; then
@@ -15701,8 +15982,14 @@ if test "x$use_pie" != "xno"; then
 	SAVED_CFLAGS="$CFLAGS"
 	SAVED_LDFLAGS="$LDFLAGS"
 	{
-	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $CC supports compile flag -fPIE" >&5
+  ossh_cache_var=ossh_cv_cflag__fPIE
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $CC supports compile flag -fPIE" >&5
 printf %s "checking if $CC supports compile flag -fPIE... " >&6; }
+if eval test \${$ossh_cache_var+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+
 	saved_CFLAGS="$CFLAGS"
 	CFLAGS="$CFLAGS $WERROR -fPIE"
 	_define_flag=""
@@ -15767,14 +16054,12 @@ then :
 
 if $ac_cv_path_EGREP -i "unrecognized option|warning.*ignored" conftest.err >/dev/null
 then
-		{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+		eval "$ossh_cache_var=no"
 		CFLAGS="$saved_CFLAGS"
 else
 				if test "$cross_compiling" = yes
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  CFLAGS="$saved_CFLAGS $_define_flag"
 else $as_nop
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -15834,12 +16119,10 @@ int main(int argc, char **argv) {
 _ACEOF
 if ac_fn_c_try_run "$LINENO"
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  CFLAGS="$saved_CFLAGS $_define_flag"
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no, fails at run time" >&5
-printf "%s\n" "no, fails at run time" >&6; }
+   eval "$ossh_cache_var='no, fails at run time'"
 			  CFLAGS="$saved_CFLAGS"
 fi
 rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
@@ -15848,16 +16131,26 @@ fi
 
 fi
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+   eval "$ossh_cache_var=no"
 		  CFLAGS="$saved_CFLAGS"
 
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+
+fi
+eval ac_res=\$$ossh_cache_var
+	       { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
+printf "%s\n" "$ac_res" >&6; }
 }
 	{
-	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $LD supports link flag -pie" >&5
+  ossh_cache_var=ossh_cv_ldflag__pie
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $LD supports link flag -pie" >&5
 printf %s "checking if $LD supports link flag -pie... " >&6; }
+if eval test \${$ossh_cache_var+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+
 	saved_LDFLAGS="$LDFLAGS"
 	LDFLAGS="$LDFLAGS $WERROR -pie"
 	_define_flag=""
@@ -15922,14 +16215,12 @@ then :
 
 if $ac_cv_path_EGREP -i "unrecognized option|warning.*ignored" conftest.err >/dev/null
 then
-		  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+		  eval "$ossh_cache_var=no"
 		  LDFLAGS="$saved_LDFLAGS"
 else
 		  		  if test "$cross_compiling" = yes
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  LDFLAGS="$saved_LDFLAGS $_define_flag"
 
 else $as_nop
@@ -15990,12 +16281,10 @@ int main(int argc, char **argv) {
 _ACEOF
 if ac_fn_c_try_run "$LINENO"
 then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
+   eval "$ossh_cache_var=yes"
 			  LDFLAGS="$saved_LDFLAGS $_define_flag"
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no, fails at run time" >&5
-printf "%s\n" "no, fails at run time" >&6; }
+   eval "$ossh_cache_var='no, fails at run time'"
 			  LDFLAGS="$saved_LDFLAGS"
 fi
 rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
@@ -16004,13 +16293,17 @@ fi
 
 fi
 else $as_nop
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+   eval "$ossh_cache_var=no"
 		  LDFLAGS="$saved_LDFLAGS"
 
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam \
     conftest$ac_exeext conftest.$ac_ext
+
+fi
+eval ac_res=\$$ossh_cache_var
+	       { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
+printf "%s\n" "$ac_res" >&6; }
 }
 	# We use both -fPIE and -pie or neither.
 	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether both -fPIE and -pie are supported" >&5
@@ -16278,6 +16571,12 @@ then :
   printf "%s\n" "#define HAVE_FREEZERO 1" >>confdefs.h
 
 fi
+ac_fn_c_check_func "$LINENO" "fstatat" "ac_cv_func_fstatat"
+if test "x$ac_cv_func_fstatat" = xyes
+then :
+  printf "%s\n" "#define HAVE_FSTATAT 1" >>confdefs.h
+
+fi
 ac_fn_c_check_func "$LINENO" "fstatfs" "ac_cv_func_fstatfs"
 if test "x$ac_cv_func_fstatfs" = xyes
 then :
@@ -16486,6 +16785,12 @@ ac_fn_c_check_func "$LINENO" "ngetaddrinfo" "ac_cv_func_ngetaddrinfo"
 if test "x$ac_cv_func_ngetaddrinfo" = xyes
 then :
   printf "%s\n" "#define HAVE_NGETADDRINFO 1" >>confdefs.h
+
+fi
+ac_fn_c_check_func "$LINENO" "nlist" "ac_cv_func_nlist"
+if test "x$ac_cv_func_nlist" = xyes
+then :
+  printf "%s\n" "#define HAVE_NLIST 1" >>confdefs.h
 
 fi
 ac_fn_c_check_func "$LINENO" "nsleep" "ac_cv_func_nsleep"
@@ -16846,6 +17151,12 @@ ac_fn_c_check_func "$LINENO" "truncate" "ac_cv_func_truncate"
 if test "x$ac_cv_func_truncate" = xyes
 then :
   printf "%s\n" "#define HAVE_TRUNCATE 1" >>confdefs.h
+
+fi
+ac_fn_c_check_func "$LINENO" "unlinkat" "ac_cv_func_unlinkat"
+if test "x$ac_cv_func_unlinkat" = xyes
+then :
+  printf "%s\n" "#define HAVE_UNLINKAT 1" >>confdefs.h
 
 fi
 ac_fn_c_check_func "$LINENO" "unsetenv" "ac_cv_func_unsetenv"
@@ -17524,6 +17835,32 @@ fi
 printf "%s\n" "#define HAVE_DECL_OFFSETOF $ac_have_decl" >>confdefs.h
 
 
+ac_fn_check_decl "$LINENO" "INFINITY" "ac_cv_have_decl_INFINITY" "#include <math.h>
+
+" "$ac_c_undeclared_builtin_options" "CFLAGS"
+if test "x$ac_cv_have_decl_INFINITY" = xyes
+then :
+  ac_have_decl=1
+else $as_nop
+  ac_have_decl=0
+fi
+printf "%s\n" "#define HAVE_DECL_INFINITY $ac_have_decl" >>confdefs.h
+if test $ac_have_decl = 1
+then :
+
+else $as_nop
+  ac_fn_check_decl "$LINENO" "__builtin_inff" "ac_cv_have_decl___builtin_inff" "$ac_includes_default" "$ac_c_undeclared_builtin_options" "CFLAGS"
+if test "x$ac_cv_have_decl___builtin_inff" = xyes
+then :
+  ac_have_decl=1
+else $as_nop
+  ac_have_decl=0
+fi
+printf "%s\n" "#define HAVE_DECL___BUILTIN_INFF $ac_have_decl" >>confdefs.h
+
+fi
+
+
 # extra bits for select(2)
 ac_fn_check_decl "$LINENO" "howmany" "ac_cv_have_decl_howmany" "
 #include <sys/param.h>
@@ -18147,6 +18484,9 @@ printf %s "checking whether snprintf can declare const char *fmt... " >&6; }
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
+#ifdef _FORTIFY_SOURCE
+#undef _FORTIFY_SOURCE
+#endif
 #include <stdio.h>
 int snprintf(char *a, size_t b, const char *c, ...) { return 0; }
 
@@ -18717,8 +19057,9 @@ OPENSSL_BIN=${openssl_bin}
 
 
 # PKCS11/U2F depend on OpenSSL and dlopen().
-enable_pkcs11="disabled; missing libcrypto"
+enable_pkcs11=yes
 enable_sk=yes
+
 if test "x$ac_cv_func_dlopen" != "xyes" ; then
 	enable_pkcs11="disabled; missing dlopen(3)"
 	enable_sk="disabled; missing dlopen(3)"
