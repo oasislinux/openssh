@@ -203,14 +203,7 @@ To validate private keys, OpenSSH makes the following checks:
 
 For public key validation, OpenSSH makes the following checks:
 
-1. The point is from a prime field rather than a binary one.
-
-    This check is not necessary with BearSSL since the only curves
-    we specify IDs for in sshkey_ecdsa_nid_from_name are the prime
-    curves. Also, BearSSL does not implement the binary curves.
-
-2. The point is not the group identity, and the subgroup order times
-   the point is the identity.
+1. The point is not the point at infinity.
 
    BearSSL point multiplication verifies that the point is on the
    relevant curve subgroup and that it is not the point at infinity.
@@ -218,16 +211,13 @@ For public key validation, OpenSSH makes the following checks:
    We do a point multiplication with 1 to check both of these
    criteria.
 
-3. The bit-length of each coordinate is greater than half that of
-   the group order.
+2. If the group cofactor is not one, then the point times the group
+   order is the identity.
 
-   After we identify the point's coordinates, we trim any leading
-   zeros, and again, check the byte-lengths rather than the
-   bit-lengths.
-
-4. Each coordinate is less than the group order - 1.
-
-   We use the same technique described above for the private key.
+   All curves supported by BearSSL (except curve25519 handled
+   specially) have cofactor 1. Additionally, as stated above, BearSSL
+   point multiplication checks that the point is on the relevant
+   curve subgroup.
 
 [1] https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-8
 

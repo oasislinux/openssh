@@ -2563,9 +2563,6 @@ int
 sshkey_ec_validate_public(int nid, const u_char *q, size_t qlen)
 {
 	const br_ec_impl *ec;
-	const u_char *n;
-	size_t nlen, glen;
-	size_t xoff, xlen, yoff, ylen;
 	u_char one[] = {1}, tmp[BR_EC_KBUF_PUB_MAX_SIZE];
 
 	ec = br_ec_get_default();
@@ -2575,37 +2572,13 @@ sshkey_ec_validate_public(int nid, const u_char *q, size_t qlen)
 	if (nid == BR_EC_curve25519)
 		return qlen == 32 ? 0 : SSH_ERR_KEY_INVALID_EC_VALUE;
 
-	ec->generator(nid, &glen);
-	n = ec->order(nid, &nlen);
-
-	/* We must check that the public key has the same size as
-	 * the generator, otherwise behavior of mul() below is
-	 * undefined. */
-	if (qlen > sizeof(tmp) || qlen != glen ||
-	    (xoff = ec->xoff(nid, &xlen)) != 1 ||
-	    qlen != 1 + 2 * xlen || q[0] != 4)
+	if (qlen > sizeof(tmp))
 		return SSH_ERR_KEY_INVALID_EC_VALUE;
-	yoff = xoff + xlen;
-	ylen = qlen - yoff;
-
-	/* Trim leading zeros */
-	while (xlen > 0 && q[xoff] == 0)
-		++xoff, --xlen;
-	while (ylen > 0 && q[yoff] == 0)
-		++yoff, --ylen;
-
-	/* log2(x) > log2(order)/2, log2(y) > log2(order)/2 */
-	if (xlen <= nlen / 2 || ylen <= nlen / 2)
-		return SSH_ERR_KEY_INVALID_EC_VALUE;
-
-	/* x < order - 1, y < order - 1 */
-	if (bn_less(q + xoff, xlen, n, nlen, -1) != 1 ||
-	    bn_less(q + yoff, ylen, n, nlen, -1) != 1)
-		return SSH_ERR_KEY_INVALID_EC_VALUE;
-
-	/* Attempt a multiplication to verify that the point is
-	 * actually on the curve. */
 	memcpy(tmp, q, qlen);
+
+	/* Attempt a multiplication to validate the point. BearSSL
+	 * returns 0 if the point is not a valid point on the curve
+	 * subgroup or is the "point at infinity". */
 	if (ec->mul(tmp, qlen, one, sizeof(one), nid) != 1)
 		return SSH_ERR_KEY_INVALID_EC_VALUE;
 
