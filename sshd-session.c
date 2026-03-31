@@ -52,10 +52,6 @@
 #include <unistd.h>
 #include <limits.h>
 
-#ifdef WITH_BEARSSL
-#include <bearssl.h>
-#endif
-
 #ifdef HAVE_SECUREWARE
 #include <sys/security.h>
 #include <prot.h>

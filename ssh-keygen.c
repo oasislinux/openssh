@@ -18,10 +18,6 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 
-#ifdef WITH_BEARSSL
-#include <bearssl.h>
-#endif
-
 #include <stdint.h>
 #include <errno.h>
 #include <fcntl.h>

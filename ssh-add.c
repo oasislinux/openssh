@@ -40,10 +40,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-#ifdef WITH_BEARSSL
-# include <bearssl.h>
-#endif
-
 #include <errno.h>
 #include <fcntl.h>
 #include <pwd.h>

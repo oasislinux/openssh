@@ -29,10 +29,6 @@
 #include "mac.h"
 #include "crypto_api.h"
 
-#ifdef WITH_BEARSSL
-#include <bearssl.h>
-#endif /* WITH_BEARSSL */
-
 #define KEX_COOKIE_LEN	16
 
 #define	KEX_DH1				"diffie-hellman-group1-sha1"

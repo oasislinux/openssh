@@ -16,10 +16,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#ifdef WITH_BEARSSL
-#include <bearssl.h>
-#endif /* WITH_BEARSSL */
-
 #include "../test_helper/test_helper.h"
 
 #include "ssherr.h"

@@ -35,10 +35,6 @@
 #include <unistd.h>
 #include <poll.h>
 
-#ifdef WITH_BEARSSL
-#include <bearssl.h>
-#endif
-
 #include "ssh.h"
 #include "ssh2.h"
 #include "atomicio.h"

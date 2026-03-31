@@ -13,10 +13,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifdef WITH_BEARSSL
-#include <bearssl.h>
-#endif
-
 #include "../test_helper/test_helper.h"
 
 #include "ssherr.h"

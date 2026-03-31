@@ -70,9 +70,6 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#ifdef WITH_BEARSSL
-#include <bearssl.h>
-#endif
 #include "openbsd-compat/sys-queue.h"
 
 #include "xmalloc.h"
