@@ -62,9 +62,9 @@ struct sshcipher_ctx {
 	struct chachapoly_ctx *cp_ctx;
 #ifdef WITH_BEARSSL
 	union {
-		br_aes_ct64_cbcenc_keys cbcenc;
-		br_aes_ct64_cbcdec_keys cbcdec;
-		br_aes_ct64_ctr_keys ctr;
+		br_aes_gen_cbcenc_keys cbcenc;
+		br_aes_gen_cbcdec_keys cbcdec;
+		br_aes_gen_ctr_keys ctr;
 	} keys;
 	br_gcm_context gcm;
 	u_char iv[16];
@@ -227,6 +227,50 @@ cipher_warning_message(const struct sshcipher_ctx *cc)
 	return NULL;
 }
 
+#ifdef WITH_BEARSSL
+static void
+aesctr_init(br_aes_gen_ctr_keys *ctx, const u_char *key, u_int keylen)
+{
+	static const br_block_ctr_class *vtable;
+
+	if (!vtable)
+		vtable = br_aes_x86ni_ctr_get_vtable();
+	if (!vtable)
+		vtable = br_aes_pwr8_ctr_get_vtable();
+	if (!vtable)
+		vtable = &br_aes_ct64_ctr_vtable;
+	vtable->init(&ctx->vtable, key, keylen);
+}
+
+static void
+aescbcenc_init(br_aes_gen_cbcenc_keys *ctx, const u_char *key, u_int keylen)
+{
+	static const br_block_cbcenc_class *vtable;
+
+	if (!vtable)
+		vtable = br_aes_x86ni_cbcenc_get_vtable();
+	if (!vtable)
+		vtable = br_aes_pwr8_cbcenc_get_vtable();
+	if (!vtable)
+		vtable = &br_aes_ct64_cbcenc_vtable;
+	vtable->init(&ctx->vtable, key, keylen);
+}
+
+static void
+aescbcdec_init(br_aes_gen_cbcdec_keys *ctx, const u_char *key, u_int keylen)
+{
+	static const br_block_cbcdec_class *vtable;
+
+	if (!vtable)
+		vtable = br_aes_x86ni_cbcdec_get_vtable();
+	if (!vtable)
+		vtable = br_aes_pwr8_cbcdec_get_vtable();
+	if (!vtable)
+		vtable = &br_aes_ct64_cbcdec_vtable;
+	vtable->init(&ctx->vtable, key, keylen);
+}
+#endif
+
 int
 cipher_init(struct sshcipher_ctx **ccp, const struct sshcipher *cipher,
     const u_char *key, u_int keylen, const u_char *iv, u_int ivlen,
@@ -260,18 +304,18 @@ cipher_init(struct sshcipher_ctx **ccp, const struct sshcipher *cipher,
 #ifdef WITH_BEARSSL
 	case CIPHER_AESCTR:
 		memcpy(cc->iv, iv, 16);
-		br_aes_ct64_ctr_init(&cc->keys.ctr, key, keylen);
+		aesctr_init(&cc->keys.ctr, key, keylen);
 		break;
 	case CIPHER_AESCBC:
 		memcpy(cc->iv, iv, 16);
 		if (do_encrypt)
-			br_aes_ct64_cbcenc_init(&cc->keys.cbcenc, key, keylen);
+			aescbcenc_init(&cc->keys.cbcenc, key, keylen);
 		else
-			br_aes_ct64_cbcdec_init(&cc->keys.cbcdec, key, keylen);
+			aescbcdec_init(&cc->keys.cbcdec, key, keylen);
 		break;
 	case CIPHER_AESGCM:
 		memcpy(cc->iv, iv, 12);
-		br_aes_ct64_ctr_init(&cc->keys.ctr, key, keylen);
+		aesctr_init(&cc->keys.ctr, key, keylen);
 		br_gcm_init(&cc->gcm, &cc->keys.ctr.vtable, br_ghash_ctmul64);
 		break;
 #else
@@ -334,26 +378,26 @@ cipher_crypt(struct sshcipher_ctx *cc, u_int seqnr, u_char *dest,
 		memcpy(dest, src, aadlen + len);
 		ctr = PEEK_U32(cc->iv + 12);
 		off = -ctr < len / 16 ? -ctr * 16 : len;
-		ctr = br_aes_ct64_ctr_run(&cc->keys.ctr, cc->iv, ctr,
-		    dest + aadlen, off);
+		ctr = cc->keys.ctr.vtable->run(&cc->keys.ctr.vtable, cc->iv,
+		    ctr, dest + aadlen, off);
 		/* If the counter rolled over (possible since the
 		 * initial value comes from a hash), increment the
 		 * IV, then process the rest of the message. */
 		if (ctr == 0) {
 			inc_iv(cc->iv, 12);
-			ctr = br_aes_ct64_ctr_run(&cc->keys.ctr, cc->iv, ctr,
-			   dest + aadlen + off, len - off);
+			ctr = cc->keys.ctr.vtable->run(&cc->keys.ctr.vtable,
+			   cc->iv, ctr, dest + aadlen + off, len - off);
 		}
 		POKE_U32(cc->iv + 12, ctr);
 		break;
 	case CIPHER_AESCBC:
 		memcpy(dest, src, aadlen + len);
 		if (cc->encrypt) {
-			br_aes_ct64_cbcenc_run(&cc->keys.cbcenc, cc->iv,
-			    dest + aadlen, len);
+			cc->keys.cbcenc.vtable->run(&cc->keys.cbcenc.vtable,
+			    cc->iv, dest + aadlen, len);
 		} else {
-			br_aes_ct64_cbcdec_run(&cc->keys.cbcdec, cc->iv,
-			    dest + aadlen, len);
+			cc->keys.cbcdec.vtable->run(&cc->keys.cbcdec.vtable,
+			    cc->iv, dest + aadlen, len);
 		}
 		break;
 	case CIPHER_AESGCM:
