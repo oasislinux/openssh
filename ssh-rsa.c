@@ -1,4 +1,4 @@
-/* $OpenBSD: ssh-rsa.c,v 1.82 2025/10/03 00:08:02 djm Exp $ */
+/* $OpenBSD: ssh-rsa.c,v 1.84 2026/02/14 00:18:34 jsg Exp $ */
 /*
  * Copyright (c) 2000, 2003 Markus Friedl <markus@openbsd.org>
  *
@@ -32,7 +32,6 @@
 #define SSHKEY_INTERNAL
 #include "sshkey.h"
 #include "digest.h"
-#include "log.h"
 
 /* The modulus is assumed to have no leading zeros. This is handled
  * by sshbuf_get_bignum2_bytes_direct(). */

@@ -1,4 +1,4 @@
-/* $OpenBSD: ssh-ecdsa-sk.c,v 1.19 2024/08/15 00:51:51 djm Exp $ */
+/* $OpenBSD: ssh-ecdsa-sk.c,v 1.21 2026/02/06 22:59:18 dtucker Exp $ */
 /*
  * Copyright (c) 2000 Markus Friedl.  All rights reserved.
  * Copyright (c) 2010 Damien Miller.  All rights reserved.
@@ -207,7 +207,7 @@ webauthn_check_prepare_hash(const u_char *data, size_t datalen,
 	fprintf(stderr, "%s: received origin: %s\n", __func__, origin);
 	fprintf(stderr, "%s: received clientData:\n", __func__);
 	sshbuf_dump(wrapper, stderr);
-	fprintf(stderr, "%s: expected clientData premable:\n", __func__);
+	fprintf(stderr, "%s: expected clientData preamble:\n", __func__);
 	sshbuf_dump(m, stderr);
 #endif
 	/* Check that the supplied clientData has the preamble we expect */
@@ -270,7 +270,9 @@ ssh_ecdsa_sk_verify(const struct sshkey *key,
 		ret = SSH_ERR_INVALID_FORMAT;
 		goto out;
 	}
-	if (strcmp(ktype, "webauthn-sk-ecdsa-sha2-nistp256@openssh.com") == 0)
+	if (strcmp(ktype, "webauthn-sk-ecdsa-sha2-nistp256@openssh.com") == 0 ||
+	    strcmp(ktype, "webauthn-sk-ecdsa-sha2-nistp256-cert-v01@openssh.com")
+	      == 0)
 		is_webauthn = 1;
 	else if (strcmp(ktype, "sk-ecdsa-sha2-nistp256@openssh.com") != 0) {
 		ret = SSH_ERR_INVALID_FORMAT;
@@ -446,6 +448,18 @@ const struct sshkey_impl sshkey_ecdsa_sk_webauthn_impl = {
 	/* .type = */		KEY_ECDSA_SK,
 	/* .nid = */		BR_EC_secp256r1,
 	/* .cert = */		0,
+	/* .sigonly = */	1,
+	/* .keybits = */	256,
+	/* .funcs = */		&sshkey_ecdsa_sk_funcs,
+};
+
+const struct sshkey_impl sshkey_ecdsa_sk_webauthn_cert_impl = {
+	/* .name = */		"webauthn-sk-ecdsa-sha2-nistp256-cert-v01@openssh.com",
+	/* .shortname = */	"ECDSA-SK-CERT",
+	/* .sigalg = */		NULL,
+	/* .type = */		KEY_ECDSA_SK_CERT,
+	/* .nid = */		BR_EC_secp256r1,
+	/* .cert = */		1,
 	/* .sigonly = */	1,
 	/* .keybits = */	256,
 	/* .funcs = */		&sshkey_ecdsa_sk_funcs,

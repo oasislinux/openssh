@@ -61,3 +61,14 @@ seed_rng(void)
 	arc4random_buf(buf, sizeof(buf));
 	explicit_bzero(buf, sizeof(buf));
 }
+
+void
+reseed_prngs(void)
+{
+	uint32_t rnd[256];
+
+	arc4random_stir(); /* noop on recent arc4random() implementations */
+	arc4random_buf(rnd, sizeof(rnd)); /* let arc4random notice PID change */
+
+	explicit_bzero(rnd, sizeof(rnd));
+}

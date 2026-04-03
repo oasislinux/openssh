@@ -22,8 +22,8 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _RANDOMS_H
-#define _RANDOMS_H
+#ifndef _ENTROPY_H
+#define _ENTROPY_H
 
 #ifdef WITH_BEARSSL
 #include <bearssl.h>
@@ -33,7 +33,6 @@ extern const br_prng_class arc4random_prng;
 struct sshbuf;
 
 void seed_rng(void);
-void rexec_send_rng_seed(struct sshbuf *);
-void rexec_recv_rng_seed(struct sshbuf *);
+void reseed_prngs(void);
 
-#endif /* _RANDOMS_H */
+#endif /* _ENTROPY_H */

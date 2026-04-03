@@ -1,4 +1,4 @@
-/* $OpenBSD: sshd.c,v 1.622 2025/08/29 03:50:38 djm Exp $ */
+/* $OpenBSD: sshd.c,v 1.626 2026/02/09 21:21:39 dtucker Exp $ */
 /*
  * Copyright (c) 2000, 2001, 2002 Markus Friedl.  All rights reserved.
  * Copyright (c) 2002 Niels Provos.  All rights reserved.
@@ -31,8 +31,7 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/time.h>
-#include "openbsd-compat/sys-tree.h"
-#include "openbsd-compat/sys-queue.h"
+#include <sys/queue.h>
 #include <sys/wait.h>
 #include <sys/utsname.h>
 
@@ -391,6 +390,12 @@ child_reap(struct early_child *child)
 			penalty_type = SRCLIMIT_PENALTY_AUTHFAIL;
 			debug_f("preauth child %ld for %s exited "
 			    "after unsuccessful auth attempt%s",
+			    (long)child->pid, child->id, child_status);
+			break;
+		case EXIT_INVALID_USER:
+			penalty_type = SRCLIMIT_PENALTY_INVALIDUSER;
+			debug_f("preauth child %ld for %s exited "
+			    "after auth attempt by invalid user%s",
 			    (long)child->pid, child->id, child_status);
 			break;
 		case EXIT_CONFIG_REFUSED:
@@ -917,7 +922,6 @@ server_accept_loop(int *sock_in, int *sock_out, int *newsock, int *config_s,
 	struct early_child *child;
 	struct sshbuf *buf;
 	socklen_t fromlen;
-	u_char rnd[256];
 	sigset_t nsigset, osigset;
 
 	/* pipes connected to unauthenticated child sshd processes */
@@ -1214,9 +1218,7 @@ server_accept_loop(int *sock_in, int *sock_out, int *newsock, int *config_s,
 			 * Ensure that our random state differs
 			 * from that of the child
 			 */
-			arc4random_stir();
-			arc4random_buf(rnd, sizeof(rnd));
-			explicit_bzero(rnd, sizeof(rnd));
+			reseed_prngs();
 		}
 	}
 }

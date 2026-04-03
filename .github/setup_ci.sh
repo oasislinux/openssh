@@ -3,7 +3,7 @@
 config="$1"
 target="$2"
 
-PACKAGES=""
+PACKAGES="tmux"
 
 echo Running as:
 id
@@ -103,10 +103,10 @@ for TARGET in $TARGETS; do
         PACKAGES="$PACKAGES $compiler"
         ;;
     krb5)
-        PACKAGES="$PACKAGES libkrb5-dev"
+        PACKAGES="$PACKAGES libkrb5-dev libnss-wrapper krb5-admin-server"
 	;;
     heimdal)
-        PACKAGES="$PACKAGES heimdal-dev"
+        PACKAGES="$PACKAGES heimdal-dev libnss-wrapper krb5-admin-server"
         ;;
     libedit)
 	case "$PACKAGER" in
@@ -125,7 +125,7 @@ for TARGET in $TARGETS; do
         PACKAGES="$PACKAGES libu2f-host-dev libcbor-dev libudev-dev"
         ;;
     selinux)
-        PACKAGES="$PACKAGES libselinux1-dev selinux-policy-dev"
+        PACKAGES="$PACKAGES libselinux1-dev selinux-policy-dev libaudit-dev"
         ;;
     hardenedmalloc)
         INSTALL_HARDENED_MALLOC=yes

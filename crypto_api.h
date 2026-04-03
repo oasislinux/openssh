@@ -1,4 +1,4 @@
-/* $OpenBSD: crypto_api.h,v 1.9 2024/09/02 12:13:56 djm Exp $ */
+/* $OpenBSD: crypto_api.h,v 1.10 2025/10/30 23:19:33 djm Exp $ */
 
 /*
  * Assembled from generated headers and source files by Markus Friedl.
@@ -27,8 +27,37 @@ typedef uint64_t crypto_uint64;
 
 #define crypto_hash_sha512_BYTES 64U
 
-int	crypto_hash_sha512(unsigned char *, const unsigned char *,
-    unsigned long long);
+#ifdef WITH_BEARSSL
+#include <bearssl.h>
+static inline int
+crypto_hash_sha512(unsigned char *out, const unsigned char *in,
+    unsigned long long inlen)
+{
+
+	br_sha512_context ctx;
+
+	br_sha512_init(&ctx);
+	br_sha512_update(&ctx, in, inlen);
+	br_sha512_out(&ctx, out);
+	return 0;
+}
+#else /* WITH_BEARSSL */
+# ifdef HAVE_SHA2_H
+#  include <sha2.h>
+# endif
+static inline int
+crypto_hash_sha512(unsigned char *out, const unsigned char *in,
+    unsigned long long inlen)
+{
+
+	SHA2_CTX ctx;
+
+	SHA512Init(&ctx);
+	SHA512Update(&ctx, in, inlen);
+	SHA512Final(out, &ctx);
+	return 0;
+}
+#endif /* WITH_BEARSSL */
 
 #define crypto_sign_ed25519_SECRETKEYBYTES 64U
 #define crypto_sign_ed25519_PUBLICKEYBYTES 32U

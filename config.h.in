@@ -34,7 +34,7 @@
 /* getline is not what we expect */
 #undef BROKEN_GETLINE
 
-/* FreeBSD glob does not do what we need */
+/* Do not use system glob */
 #undef BROKEN_GLOB
 
 /* Define if you system's inet_ntoa is busted (e.g. Irix gcc issue) */
@@ -216,6 +216,9 @@
 /* Have attribute nonnull */
 #undef HAVE_ATTRIBUTE__NONNULL__
 
+/* compiler supports nonstring attribute */
+#undef HAVE_ATTRIBUTE__NONSTRING__
+
 /* OpenBSD's gcc has sentinel */
 #undef HAVE_ATTRIBUTE__SENTINEL__
 
@@ -263,6 +266,9 @@
 
 /* Define to 1 if you have the `Blowfish_stream2word' function. */
 #undef HAVE_BLOWFISH_STREAM2WORD
+
+/* Define to 1 if you have the `BN_is_prime_ex' function. */
+#undef HAVE_BN_IS_PRIME_EX
 
 /* Define to 1 if you have the <bsd/libutil.h> header file. */
 #undef HAVE_BSD_LIBUTIL_H
@@ -448,6 +454,9 @@
    you don't. */
 #undef HAVE_DECL___BUILTIN_INFF
 
+/* Define to 1 if you have the `DES_crypt' function. */
+#undef HAVE_DES_CRYPT
+
 /* Define if you have /dev/ptmx */
 #undef HAVE_DEV_PTMX
 
@@ -465,6 +474,23 @@
 
 /* Define to 1 if you have the `dlopen' function. */
 #undef HAVE_DLOPEN
+
+/* Define to 1 if you have the `EC_KEY_METHOD_new' function. */
+#undef HAVE_EC_KEY_METHOD_NEW
+
+/* Define to 1 if you have the `EC_POINT_get_affine_coordinates' function. */
+#undef HAVE_EC_POINT_GET_AFFINE_COORDINATES
+
+/* Define to 1 if you have the `EC_POINT_get_affine_coordinates_GFp' function.
+   */
+#undef HAVE_EC_POINT_GET_AFFINE_COORDINATES_GFP
+
+/* Define to 1 if you have the `EC_POINT_set_affine_coordinates' function. */
+#undef HAVE_EC_POINT_SET_AFFINE_COORDINATES
+
+/* Define to 1 if you have the `EC_POINT_set_affine_coordinates_GFp' function.
+   */
+#undef HAVE_EC_POINT_SET_AFFINE_COORDINATES_GFP
 
 /* Define to 1 if you have the <elf.h> header file. */
 #undef HAVE_ELF_H
@@ -492,6 +518,60 @@
 
 /* Define if your system has /etc/default/login */
 #undef HAVE_ETC_DEFAULT_LOGIN
+
+/* Define to 1 if you have the `EVP_chacha20' function. */
+#undef HAVE_EVP_CHACHA20
+
+/* Define to 1 if you have the `EVP_CIPHER_CTX_get_iv' function. */
+#undef HAVE_EVP_CIPHER_CTX_GET_IV
+
+/* Define to 1 if you have the `EVP_CIPHER_CTX_get_updated_iv' function. */
+#undef HAVE_EVP_CIPHER_CTX_GET_UPDATED_IV
+
+/* Define to 1 if you have the `EVP_CIPHER_CTX_iv' function. */
+#undef HAVE_EVP_CIPHER_CTX_IV
+
+/* Define to 1 if you have the `EVP_CIPHER_CTX_iv_noconst' function. */
+#undef HAVE_EVP_CIPHER_CTX_IV_NOCONST
+
+/* Define to 1 if you have the `EVP_CIPHER_CTX_set_iv' function. */
+#undef HAVE_EVP_CIPHER_CTX_SET_IV
+
+/* Define to 1 if you have the `EVP_DigestFinal_ex' function. */
+#undef HAVE_EVP_DIGESTFINAL_EX
+
+/* Define to 1 if you have the `EVP_DigestInit_ex' function. */
+#undef HAVE_EVP_DIGESTINIT_EX
+
+/* Define to 1 if you have the `EVP_DigestSign' function. */
+#undef HAVE_EVP_DIGESTSIGN
+
+/* Define to 1 if you have the `EVP_DigestVerify' function. */
+#undef HAVE_EVP_DIGESTVERIFY
+
+/* Define to 1 if you have the `EVP_MD_CTX_cleanup' function. */
+#undef HAVE_EVP_MD_CTX_CLEANUP
+
+/* Define to 1 if you have the `EVP_MD_CTX_copy_ex' function. */
+#undef HAVE_EVP_MD_CTX_COPY_EX
+
+/* Define to 1 if you have the `EVP_MD_CTX_init' function. */
+#undef HAVE_EVP_MD_CTX_INIT
+
+/* Define to 1 if you have the `EVP_PKEY_get_raw_private_key' function. */
+#undef HAVE_EVP_PKEY_GET_RAW_PRIVATE_KEY
+
+/* Define to 1 if you have the `EVP_PKEY_get_raw_public_key' function. */
+#undef HAVE_EVP_PKEY_GET_RAW_PUBLIC_KEY
+
+/* Define to 1 if you have the `EVP_sha256' function. */
+#undef HAVE_EVP_SHA256
+
+/* Define to 1 if you have the `EVP_sha384' function. */
+#undef HAVE_EVP_SHA384
+
+/* Define to 1 if you have the `EVP_sha512' function. */
+#undef HAVE_EVP_SHA512
 
 /* Define if you have ut_exit in utmp.h */
 #undef HAVE_EXIT_IN_UTMP
@@ -726,6 +806,9 @@
 
 /* Define if HEADER.ad exists in arpa/nameser.h */
 #undef HAVE_HEADER_AD
+
+/* Define to 1 if you have the `HMAC_CTX_init' function. */
+#undef HAVE_HMAC_CTX_INIT
 
 /* Define if you have ut_host in utmp.h */
 #undef HAVE_HOST_IN_UTMP
@@ -972,6 +1055,12 @@
 /* Define to 1 if you have the `openpty' function. */
 #undef HAVE_OPENPTY
 
+/* Define to 1 if you have the `OpenSSL_version' function. */
+#undef HAVE_OPENSSL_VERSION
+
+/* Define to 1 if you have the `OpenSSL_version_num' function. */
+#undef HAVE_OPENSSL_VERSION_NUM
+
 /* Define if you have Digital Unix Security Integration Architecture */
 #undef HAVE_OSF_SIA
 
@@ -1071,6 +1160,12 @@
 
 /* Define to 1 if you have the `rresvport_af' function. */
 #undef HAVE_RRESVPORT_AF
+
+/* Define to 1 if you have the `RSA_generate_key_ex' function. */
+#undef HAVE_RSA_GENERATE_KEY_EX
+
+/* Define to 1 if you have the `RSA_get_default_method' function. */
+#undef HAVE_RSA_GET_DEFAULT_METHOD
 
 /* Define to 1 if you have the <sandbox.h> header file. */
 #undef HAVE_SANDBOX_H
@@ -1528,6 +1623,9 @@
 /* Define to 1 if the system has the type `unsigned long long'. */
 #undef HAVE_UNSIGNED_LONG_LONG
 
+/* Define to 1 if you have the `unveil' function. */
+#undef HAVE_UNVEIL
+
 /* Define to 1 if you have the `updwtmp' function. */
 #undef HAVE_UPDWTMP
 
@@ -1706,6 +1804,30 @@
 /* Define if X11 doesn't support AF_UNIX sockets on that system */
 #undef NO_X11_UNIX_SOCKETS
 
+/* Define if EVP_DigestUpdate returns void */
+#undef OPENSSL_EVP_DIGESTUPDATE_VOID
+
+/* OpenSSL has ECC */
+#undef OPENSSL_HAS_ECC
+
+/* libcrypto has ed25519 support */
+#undef OPENSSL_HAS_ED25519
+
+/* libcrypto has NID_X9_62_prime256v1 */
+#undef OPENSSL_HAS_NISTP256
+
+/* libcrypto has NID_secp384r1 */
+#undef OPENSSL_HAS_NISTP384
+
+/* libcrypto has NID_secp521r1 */
+#undef OPENSSL_HAS_NISTP521
+
+/* libcrypto is missing AES 192 and 256 bit functions */
+#undef OPENSSL_LOBOTOMISED_AES
+
+/* Define if you want the OpenSSL internally seeded PRNG only */
+#undef OPENSSL_PRNG_ONLY
+
 /* Define to the address where bug reports for this package should be sent. */
 #undef PACKAGE_BUGREPORT
 
@@ -1739,6 +1861,15 @@
 
 /* need inet in pledge for setsockopt IP_TOS */
 #undef PLEDGE_EXTRA_INET
+
+/* Define if poll 2nd arg is ulong */
+#undef POLL_NFDS_T_ULONG
+
+/* Port number of PRNGD/EGD random number socket */
+#undef PRNGD_PORT
+
+/* Location of PRNGD/EGD random number socket */
+#undef PRNGD_SOCKET
 
 /* read(1) can return 0 for a non-closed fd */
 #undef PTY_ZEROREAD
@@ -1803,9 +1934,6 @@
 
 /* sshd PAM service name */
 #undef SSHD_PAM_SERVICE
-
-/* Define if pam_chauthtok wants real uid set to the unpriv'ed user */
-#undef SSHPAM_CHAUTHTOK_NEEDS_RUID
 
 /* Use audit debugging module */
 #undef SSH_AUDIT_EVENTS
@@ -1872,6 +2000,9 @@
 /* Use Linux audit module */
 #undef USE_LINUX_AUDIT
 
+/* Enable OpenSSL engine support */
+#undef USE_OPENSSL_ENGINE
+
 /* Define if you want to enable PAM support */
 #undef USE_PAM
 
@@ -1902,9 +2033,6 @@
 /* Define if you want to enable AIX4's authenticate function */
 #undef WITH_AIXAUTHENTICATE
 
-/* use BearSSL for cryptography */
-#undef WITH_BEARSSL
-
 /* Define if you have/want arrays (cluster-wide session management, not C
    arrays) */
 #undef WITH_IRIX_ARRAY
@@ -1917,6 +2045,9 @@
 
 /* Define if you want IRIX project management */
 #undef WITH_IRIX_PROJECT
+
+/* use libcrypto for cryptography */
+#undef WITH_OPENSSL
 
 /* Define if you want SELinux support. */
 #undef WITH_SELINUX
