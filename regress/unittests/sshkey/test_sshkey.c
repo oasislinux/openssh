@@ -232,11 +232,8 @@ get_private(const char *n)
 void
 sshkey_tests(void)
 {
-	struct sshkey *k1 = NULL, *k2 = NULL, *k3 = NULL, *kf = NULL;
-#ifdef WITH_BEARSSL
-	struct sshkey *k4 = NULL, *kr = NULL;
-	struct sshkey *ke = NULL;
-#endif /* WITH_BEARSSL */
+	struct sshkey *k1 = NULL, *k2 = NULL, *k3 = NULL, *k4 = NULL;
+	struct sshkey *kr = NULL, *kd = NULL, *ke = NULL, *kf = NULL;
 	struct sshbuf *b = NULL;
 
 	TEST_START("new invalid");
@@ -271,6 +268,7 @@ sshkey_tests(void)
 	sshkey_free(k1);
 	k1 = NULL;
 	TEST_DONE();
+#endif /* WITH_BEARSSL */
 
 	TEST_START("new/free KEY_ED25519");
 	k1 = sshkey_new(KEY_ED25519);
@@ -291,6 +289,7 @@ sshkey_tests(void)
 	k1 = NULL;
 	TEST_DONE();
 
+#ifdef WITH_BEARSSL
 	TEST_START("generate KEY_RSA too small modulus");
 	ASSERT_INT_EQ(sshkey_generate(KEY_RSA, 128, &k1),
 	    SSH_ERR_KEY_LENGTH);
@@ -302,6 +301,7 @@ sshkey_tests(void)
 	    SSH_ERR_KEY_LENGTH);
 	ASSERT_PTR_EQ(k1, NULL);
 	TEST_DONE();
+
 
 	TEST_START("generate KEY_ECDSA wrong bits");
 	ASSERT_INT_EQ(sshkey_generate(KEY_ECDSA, 42, &k1),
@@ -333,6 +333,7 @@ sshkey_tests(void)
 	ASSERT_PTR_NE(kr->rsa_sk->key.iq, NULL);
 	ASSERT_SIZE_T_NE(kr->rsa_sk->key.iqlen, 0);
 	TEST_DONE();
+
 
 	TEST_START("generate KEY_ECDSA");
 	ASSERT_INT_EQ(sshkey_generate(KEY_ECDSA, 256, &ke), 0);
@@ -385,6 +386,7 @@ sshkey_tests(void)
 	sshkey_free(k1);
 	k1 = NULL;
 	TEST_DONE();
+
 
 	TEST_START("demote KEY_ECDSA");
 	ASSERT_INT_EQ(sshkey_from_private(ke, &k1), 0);
@@ -468,11 +470,10 @@ sshkey_tests(void)
 	k1 = k2 = NULL;
 	TEST_DONE();
 
-#ifdef WITH_BEARSSL
 	sshkey_free(kr);
 	sshkey_free(ke);
-#endif /* WITH_BEARSSL */
 	sshkey_free(kf);
+	kr = kd = ke = kf = NULL;
 
 	TEST_START("certify key");
 	ASSERT_INT_EQ(sshkey_load_public(test_data_file("ed25519_1.pub"),
@@ -597,6 +598,7 @@ sshkey_tests(void)
 	sshkey_free(k2);
 	k1 = k2 = NULL;
 	TEST_DONE();
+
 
 	TEST_START("sign and verify ECDSA");
 	k1 = get_private("ecdsa_1");

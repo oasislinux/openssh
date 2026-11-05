@@ -32,7 +32,7 @@
 # define SSH_BEARSSL_VERSION "with BearSSL"
 #else /* WITH_BEARSSL */
 # define SSH_BEARSSL_VERSION "without BearSSL"
-#endif /* WITH_OPENSSL */
+#endif
 
 #define SSH_RSA_MINIMUM_MODULUS_SIZE	1024
 #define SSH_RSA_MAXIMUM_MODULUS_SIZE	4096

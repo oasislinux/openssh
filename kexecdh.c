@@ -1,4 +1,4 @@
-/* $OpenBSD: kexecdh.c,v 1.12 2026/02/14 00:18:34 jsg Exp $ */
+/* $OpenBSD: kexecdh.c,v 1.14 2026/08/03 06:43:16 djm Exp $ */
 /*
  * Copyright (c) 2010 Damien Miller.  All rights reserved.
  * Copyright (c) 2019 Markus Friedl.  All rights reserved.
@@ -39,10 +39,6 @@
 #include "kex.h"
 #include "sshbuf.h"
 #include "ssherr.h"
-
-static int
-kex_ecdh_dec_key_group(struct kex *, const struct sshbuf *,
-    const struct sshkey_ecdsa_sk *key, struct sshbuf **);
 
 int
 kex_ecdh_keypair(struct kex *kex)
@@ -119,7 +115,7 @@ kex_ecdh_enc(struct kex *kex, const struct sshbuf *client_blob,
 	    public_key.key.qlen)) != 0)
 		goto out;
 	if ((r = kex_ecdh_dec_key_group(kex, client_blob, &server_key,
-	    shared_secretp)) != 0)
+	    0, shared_secretp)) != 0)
 		goto out;
 	*server_blobp = server_blob;
 	server_blob = NULL;
@@ -130,9 +126,9 @@ kex_ecdh_enc(struct kex *kex, const struct sshbuf *client_blob,
 	return r;
 }
 
-static int
+int
 kex_ecdh_dec_key_group(struct kex *kex, const struct sshbuf *ec_blob,
-    const struct sshkey_ecdsa_sk *key, struct sshbuf **shared_secretp)
+    const struct sshkey_ecdsa_sk *key, int raw, struct sshbuf **shared_secretp)
 {
 	const br_ec_impl *ec;
 	struct sshbuf *buf = NULL;
@@ -172,8 +168,13 @@ kex_ecdh_dec_key_group(struct kex *kex, const struct sshbuf *ec_blob,
 		r = SSH_ERR_ALLOC_FAIL;
 		goto out;
 	}
-	if ((r = sshbuf_put_bignum2_bytes(buf, kbuf + xoff, xlen)) != 0)
-		goto out;
+	if (raw) {
+		if ((r = sshbuf_put(buf, kbuf + xoff, xlen)) != 0)
+			goto out;
+	} else {
+		if ((r = sshbuf_put_bignum2_bytes(buf, kbuf + xoff, xlen)) != 0)
+			goto out;
+	}
 	*shared_secretp = buf;
 	buf = NULL;
  out:
@@ -189,37 +190,10 @@ kex_ecdh_dec(struct kex *kex, const struct sshbuf *server_blob,
 	int r;
 
 	r = kex_ecdh_dec_key_group(kex, server_blob, kex->ec_client_key,
-	    shared_secretp);
+	    0, shared_secretp);
 	freezero(kex->ec_client_key, sizeof(*kex->ec_client_key));
 	kex->ec_client_key = NULL;
 	return r;
 }
 
-#else
-
-#include "ssherr.h"
-
-struct kex;
-struct sshbuf;
-struct sshkey;
-
-int
-kex_ecdh_keypair(struct kex *kex)
-{
-	return SSH_ERR_SIGN_ALG_UNSUPPORTED;
-}
-
-int
-kex_ecdh_enc(struct kex *kex, const struct sshbuf *client_blob,
-    struct sshbuf **server_blobp, struct sshbuf **shared_secretp)
-{
-	return SSH_ERR_SIGN_ALG_UNSUPPORTED;
-}
-
-int
-kex_ecdh_dec(struct kex *kex, const struct sshbuf *server_blob,
-    struct sshbuf **shared_secretp)
-{
-	return SSH_ERR_SIGN_ALG_UNSUPPORTED;
-}
-#endif /* !WITH_BEARSSL */
+#endif /* WITH_BEARSSL */

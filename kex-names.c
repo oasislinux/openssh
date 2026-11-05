@@ -1,4 +1,4 @@
-/* $OpenBSD: kex-names.c,v 1.7 2026/02/14 00:18:34 jsg Exp $ */
+/* $OpenBSD: kex-names.c,v 1.10 2026/08/08 07:27:54 djm Exp $ */
 /*
  * Copyright (c) 2000, 2001 Markus Friedl.  All rights reserved.
  *
@@ -70,6 +70,8 @@ static const struct kexalg kexalgs[] = {
 	    SSH_DIGEST_SHA256, KEX_NOT_PQ },
 	{ KEX_CURVE25519_SHA256_OLD, KEX_C25519_SHA256, BR_EC_curve25519,
 	    SSH_DIGEST_SHA256, KEX_NOT_PQ },
+	{ KEX_MLKEM768NISTP256_SHA256, KEX_KEM_MLKEM768ECDH_SHA256,
+	    BR_EC_secp256r1, SSH_DIGEST_SHA256, KEX_IS_PQ },
 #else
 	{ KEX_CURVE25519_SHA256, KEX_C25519_SHA256, 0, SSH_DIGEST_SHA256, KEX_NOT_PQ },
 	{ KEX_CURVE25519_SHA256_OLD, KEX_C25519_SHA256, 0, SSH_DIGEST_SHA256, KEX_NOT_PQ },

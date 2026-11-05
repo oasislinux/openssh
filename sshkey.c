@@ -85,10 +85,10 @@ extern const struct sshkey_impl sshkey_ed25519_impl;
 extern const struct sshkey_impl sshkey_ed25519_cert_impl;
 extern const struct sshkey_impl sshkey_ed25519_sk_impl;
 extern const struct sshkey_impl sshkey_ed25519_sk_cert_impl;
-#ifdef USE_MLDSA
+# ifdef USE_MLDSA
 extern const struct sshkey_impl sshkey_mldsa44_ed25519_impl;
 extern const struct sshkey_impl sshkey_mldsa44_ed25519_cert_impl;
-#endif /* USE_MLDSA */
+# endif /* USE_MLDSA */
 #ifdef WITH_BEARSSL
 # ifdef ENABLE_SK
 extern const struct sshkey_impl sshkey_ecdsa_sk_impl;

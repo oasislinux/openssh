@@ -159,11 +159,11 @@ do_kex_with_key(char *kex, char *cipher, char *mac,
 #if 0
 	server2->kex->kex[KEX_DH_GRP1_SHA1] = kex_gen_server;
 	server2->kex->kex[KEX_DH_GRP14_SHA1] = kex_gen_server;
-	server2->kex->kex[KEX_DH_GEX_SHA1] = kexgex_server;
-	server2->kex->kex[KEX_DH_GEX_SHA256] = kexgex_server;
 	server2->kex->kex[KEX_DH_GRP14_SHA256] = kex_gen_server;
 	server2->kex->kex[KEX_DH_GRP16_SHA512] = kex_gen_server;
 	server2->kex->kex[KEX_DH_GRP18_SHA512] = kex_gen_server;
+	server2->kex->kex[KEX_DH_GEX_SHA1] = kexgex_server;
+	server2->kex->kex[KEX_DH_GEX_SHA256] = kexgex_server;
 #endif
 	server2->kex->kex[KEX_ECDH_SHA2] = kex_gen_server;
 #endif /* WITH_BEARSSL */
@@ -183,9 +183,9 @@ do_kex_with_key(char *kex, char *cipher, char *mac,
 	TEST_DONE();
 
 	TEST_START("cleanup");
+	sshkey_free(public);
 	if (key == NULL)
 		sshkey_free(private);
-	sshkey_free(public);
 	ssh_free(client);
 	ssh_free(server);
 	ssh_free(server2);

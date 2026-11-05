@@ -33,7 +33,6 @@
 
 #ifdef WITH_BEARSSL
 #include <bearssl.h>
-#endif
 
 #include <stdio.h> /* needed for DEBUG_SK only */
 #include <stdlib.h>
@@ -45,18 +44,6 @@
 #define SSHKEY_INTERNAL
 #include "sshkey.h"
 #include "misc.h"
-
-#ifndef WITH_BEARSSL
-/* ARGSUSED */
-int
-ssh_ecdsa_sk_verify(const struct sshkey *key,
-    const u_char *signature, size_t signaturelen,
-    const u_char *data, size_t datalen, u_int compat,
-    struct sshkey_sig_details **detailsp)
-{
-	return SSH_ERR_FEATURE_UNSUPPORTED;
-}
-#else /* WITH_BEARSSL */
 
 /* Reuse some ECDSA internals */
 extern struct sshkey_impl_funcs sshkey_ecdsa_funcs;
@@ -464,5 +451,4 @@ const struct sshkey_impl sshkey_ecdsa_sk_webauthn_cert_impl = {
 	/* .keybits = */	256,
 	/* .funcs = */		&sshkey_ecdsa_sk_funcs,
 };
-
 #endif /* WITH_BEARSSL */

@@ -151,6 +151,7 @@ sshkey_fuzz_tests(void)
 	fuzz_cleanup(fuzz);
 	TEST_DONE();
 
+
 	TEST_START("fuzz ECDSA private");
 	buf = load_file("ecdsa_1");
 	fuzz = fuzz_begin(FUZZ_BASE64, sshbuf_mutable_ptr(buf),
@@ -259,6 +260,7 @@ sshkey_fuzz_tests(void)
 	sshkey_free(k1);
 	TEST_DONE();
 
+
 	TEST_START("fuzz ECDSA public");
 	buf = load_file("ecdsa_1");
 	ASSERT_INT_EQ(sshkey_parse_private_fileblob(buf, "", &k1, NULL), 0);
@@ -327,6 +329,7 @@ sshkey_fuzz_tests(void)
 	sig_fuzz(k1, "rsa-sha2-512");
 	sshkey_free(k1);
 	TEST_DONE();
+
 
 	TEST_START("fuzz ECDSA sig");
 	buf = load_file("ecdsa_1");

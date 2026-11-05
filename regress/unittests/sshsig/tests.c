@@ -96,6 +96,7 @@ tests(void)
 	check_sig("rsa.pub", "rsa.sig", msg, namespace);
 	TEST_DONE();
 
+
 	TEST_START("check ECDSA signature");
 	check_sig("ecdsa.pub", "ecdsa.sig", msg, namespace);
 	TEST_DONE();
@@ -124,7 +125,7 @@ tests(void)
 	TEST_START("check ECDSA-SK webauthn signature");
 	check_sig("ecdsa_sk_webauthn.pub", "ecdsa_sk_webauthn.sig",
 	    msg, namespace);
- 	TEST_DONE();
+	TEST_DONE();
 #endif
 #endif /* ENABLE_SK */
 
