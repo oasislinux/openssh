@@ -60,7 +60,7 @@ AC_PATH_PROG([SH], [bash])
 AC_PATH_PROG([SH], [ksh])
 AC_PATH_PROG([SH], [sh])
 AC_PATH_PROG([GROFF], [groff])
-AC_PATH_PROG([NROFF], [nroff awf])
+AC_PATH_PROGS([NROFF], [nroff awf])
 AC_PATH_PROG([MANDOC], [mandoc])
 AC_PATH_TOOL([PKGCONFIG], [pkg-config], [no])
 AC_SUBST([TEST_SHELL], [sh])
@@ -588,7 +588,7 @@ for include in sys/queue.h sys/tree.h; do
 	esac >"$header"
 done
 
-AC_CHECK_DECLS([le32toh, le64toh, htole64], [], [], [
+AC_CHECK_DECLS([le32toh, le64toh, htole64, htobe32], [], [], [
 #ifdef HAVE_SYS_TYPES_H
 # include <sys/types.h>
 #endif

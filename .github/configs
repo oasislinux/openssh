@@ -175,6 +175,11 @@ case "$config" in
 	CONFIGFLAGS="--with-pam"
 	SSHD_CONFOPTS="UsePam yes"
 	;;
+    dropbear-*)
+	CONFIGFLAGS="--with-dbclient=/usr/local/bin/plink --with-dropbear=/usr/local/sbin/dropbear"
+	# We don't need to rerun the regular tests, just the interop ones.
+	TEST_TARGET=interop-tests
+	;;
     putty-*)
 	CONFIGFLAGS="--with-plink=/usr/local/bin/plink --with-puttygen=/usr/local/bin/puttygen"
 	# We don't need to rerun the regular tests, just the interop ones.
@@ -185,7 +190,7 @@ case "$config" in
 	;;
     sk)
 	CONFIGFLAGS="--with-security-key-builtin --with-security-key-standalone"
-        ;;
+	;;
     without-bearssl)
 	LIBCRYPTOFLAGS="--without-bearssl"
 	TEST_TARGET=t-exec

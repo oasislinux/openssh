@@ -1,4 +1,4 @@
-/* 	$OpenBSD: tests.c,v 1.6 2025/05/06 06:05:48 djm Exp $ */
+/* 	$OpenBSD: tests.c,v 1.8 2026/06/29 07:46:22 djm Exp $ */
 /*
  * Regress test for sshbuf.h buffer API
  *
@@ -80,7 +80,7 @@ tests(void)
 
 #ifdef WITH_OPENSSL
 	OpenSSL_add_all_algorithms();
-	ERR_load_crypto_strings();
+	OPENSSL_init_crypto(OPENSSL_INIT_LOAD_CRYPTO_STRINGS, NULL);
 #endif
 
 	TEST_START("load data");
@@ -103,6 +103,10 @@ tests(void)
 
 	TEST_START("check ED25519 signature");
 	check_sig("ed25519.pub", "ed25519.sig", msg, namespace);
+	TEST_DONE();
+
+	TEST_START("check MLDSA44-ED25519 signature");
+	check_sig("mldsa44-ed25519.pub", "mldsa44-ed25519.sig", msg, namespace);
 	TEST_DONE();
 
 #ifdef ENABLE_SK

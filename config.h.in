@@ -363,6 +363,10 @@
    don't. */
 #undef HAVE_DECL_HOWMANY
 
+/* Define to 1 if you have the declaration of `htobe32', and to 0 if you
+   don't. */
+#undef HAVE_DECL_HTOBE32
+
 /* Define to 1 if you have the declaration of `htole64', and to 0 if you
    don't. */
 #undef HAVE_DECL_HTOLE64

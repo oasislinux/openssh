@@ -1,4 +1,4 @@
-/* $OpenBSD: cipher.h,v 1.56 2023/10/10 06:49:54 tb Exp $ */
+/* $OpenBSD: cipher.h,v 1.58 2026/06/19 05:26:04 djm Exp $ */
 
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
@@ -63,6 +63,7 @@ u_int	 cipher_seclen(const struct sshcipher *);
 u_int	 cipher_authlen(const struct sshcipher *);
 u_int	 cipher_ivlen(const struct sshcipher *);
 u_int	 cipher_is_cbc(const struct sshcipher *);
+u_int	 cipher_is_internal(const struct sshcipher *);
 
 u_int	 cipher_ctx_is_plaintext(struct sshcipher_ctx *);
 
