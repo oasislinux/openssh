@@ -1,12 +1,6 @@
-<<<<<<< HEAD
 # generated automatically by aclocal 1.18 -*- Autoconf -*-
 
 # Copyright (C) 1996-2025 Free Software Foundation, Inc.
-=======
-# generated automatically by aclocal 1.16.5 -*- Autoconf -*-
-
-# Copyright (C) 1996-2021 Free Software Foundation, Inc.
->>>>>>> V_10_5_P1
 
 # This file is free software; the Free Software Foundation
 # gives unlimited permission to copy and/or distribute it,
